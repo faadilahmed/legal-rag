@@ -4,13 +4,17 @@ Run after `python -m src.ingest` has populated data/raw/. Output is the FAISS +
 BM25 index under data/processed/index/ plus chunks.jsonl for the PySpark module.
 """
 import json
+import sys
 from pathlib import Path
 
-from src.chunk import chunk_document
-from src.config import CHUNKS_PATH, INDEX_DIR, PROCESSED_DIR, RAW_DIR
-from src.embed import Embedder
-from src.index import HybridIndex
-from src.preprocess import preprocess_filing
+# Allow running as `python scripts/build_index.py` from the project root.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from src.chunk import chunk_document  # noqa: E402
+from src.config import CHUNKS_PATH, INDEX_DIR, PROCESSED_DIR, RAW_DIR  # noqa: E402
+from src.embed import Embedder  # noqa: E402
+from src.index import HybridIndex  # noqa: E402
+from src.preprocess import preprocess_filing  # noqa: E402
 
 
 def find_filings() -> list[Path]:

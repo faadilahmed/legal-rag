@@ -1,9 +1,14 @@
 """Run the evaluation suite — retrieval metrics + RAGAS LLM-judged metrics."""
 import json
+import sys
+from pathlib import Path
 
-from src.config import EVAL_DIR
-from src.evaluate import evaluate_generation_ragas, evaluate_retrieval, load_eval_set
-from src.pipeline import RAGPipeline
+# Allow running as `python scripts/run_eval.py` from the project root.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from src.config import EVAL_DIR  # noqa: E402
+from src.evaluate import evaluate_generation_ragas, evaluate_retrieval, load_eval_set  # noqa: E402
+from src.pipeline import RAGPipeline  # noqa: E402
 
 
 def main() -> None:
