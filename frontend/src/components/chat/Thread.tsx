@@ -3,8 +3,14 @@ import {
   MessagePrimitive,
   ThreadPrimitive,
 } from "@assistant-ui/react"
+import type {
+  DataMessagePartComponent,
+  DataMessagePartProps,
+} from "@assistant-ui/react"
 
 import { Button } from "@/components/ui/button"
+import { SourcesPanel } from "@/components/chat/SourcesPanel"
+import type { SourcesData } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 export function Thread() {
@@ -35,10 +41,25 @@ function UserMessage() {
   )
 }
 
+const SourcesDataPart: DataMessagePartComponent<SourcesData> = ({
+  data,
+}: DataMessagePartProps<SourcesData>) => {
+  if (!data?.chunks?.length) return null
+  return <SourcesPanel chunks={data.chunks} />
+}
+
 function AssistantMessage() {
   return (
     <MessagePrimitive.Root className="my-4 max-w-3xl rounded-lg bg-card px-4 py-2 text-card-foreground">
-      <MessagePrimitive.Content />
+      <MessagePrimitive.Content
+        components={{
+          data: {
+            by_name: {
+              sources: SourcesDataPart as DataMessagePartComponent,
+            },
+          },
+        }}
+      />
     </MessagePrimitive.Root>
   )
 }
