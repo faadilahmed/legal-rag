@@ -10,6 +10,8 @@ export default defineConfig({
     },
   },
   server: {
+    port: 5180,
+    strictPort: false,  // fall through to next free port if 5180 is also busy
     proxy: {
       "/api": {
         target: "http://localhost:8000",
