@@ -18,10 +18,22 @@ class Reranker:
         query: str,
         candidates: list[dict],
         top_k: int = RERANK_TOP_K,
+        return_all: bool = False,
     ) -> list[dict]:
-        """Score (query, chunk_text) pairs and return the top_k by score."""
+        """Score (query, chunk_text) pairs and return the top_k by score.
+
+        If return_all=True, returns ALL scored candidates sorted by rerank_score
+        descending, each carrying a rerank_rank field (0 = highest score).
+        Default is False — all existing callers still receive only top_k chunks
+        with no rerank_rank field.
+        """
         pairs = [(query, c["text"]) for c in candidates]
         scores = self.model.predict(pairs, show_progress_bar=False)
         for c, score in zip(candidates, scores):
             c["rerank_score"] = float(score)
-        return sorted(candidates, key=lambda x: -x["rerank_score"])[:top_k]
+        sorted_candidates = sorted(candidates, key=lambda x: -x["rerank_score"])
+        if return_all:
+            for rank, c in enumerate(sorted_candidates):
+                c["rerank_rank"] = rank
+            return sorted_candidates
+        return sorted_candidates[:top_k]

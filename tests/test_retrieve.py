@@ -97,3 +97,39 @@ def test_retriever_ticker_filter_restricts_to_set():
         f"Expected only AAPL, got tickers {[r['ticker'] for r in results]}"
     # There are only 2 AAPL chunks; result count is min(k, available)
     assert len(results) == 2
+
+
+def test_retriever_return_breakdown_attaches_scores():
+    """With return_breakdown=True, each chunk should carry dense/sparse rank+score fields."""
+    from unittest.mock import MagicMock
+    from src.retrieve import HybridRetriever
+
+    chunks = [
+        {"chunk_id": f"T_{i}", "ticker": "T", "text": f"chunk {i}"} for i in range(8)
+    ]
+    index = MagicMock()
+    # Dense search returns top 5 with scores
+    index.dense_index.search.return_value = (
+        np.array([[0.9, 0.8, 0.7, 0.6, 0.5]]),
+        np.array([[0, 1, 2, 3, 4]]),
+    )
+    # BM25 scores for all 8 (chunk 7 wins sparse, chunk 6 second)
+    index.sparse_index.get_scores.return_value = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8])
+    index.chunks = chunks
+
+    embedder = MagicMock()
+    embedder.embed_query.return_value = np.zeros(8, dtype=np.float32)
+
+    retriever = HybridRetriever(index, embedder)
+    results = retriever.retrieve("q", k=8, return_breakdown=True)
+
+    # All chunks should appear (no filter); each should have the breakdown fields.
+    for r in results:
+        # The keys must EXIST (may be None for chunks not in a particular top-k).
+        assert "dense_score" in r and "dense_rank" in r
+        assert "sparse_score" in r and "sparse_rank" in r
+        assert "rrf_rank" in r and isinstance(r["rrf_rank"], int)
+    # The chunk at index 0 was rank 0 in dense; it should have a populated dense_rank.
+    by_id = {r["chunk_id"]: r for r in results}
+    assert by_id["T_0"]["dense_rank"] == 0
+    assert by_id["T_0"]["dense_score"] == pytest.approx(0.9)
