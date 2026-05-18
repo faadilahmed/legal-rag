@@ -1,5 +1,24 @@
 import type { ChunkFull, Thread } from "./types"
 
+export interface SourceChunkRow {
+  chunk_id: string
+  ticker: string
+  item: string
+  section_title: string
+  rerank_score: number
+  retrieval_score: number
+  text_preview: string
+}
+
+export interface MessageRow {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  sources: { chunks: SourceChunkRow[] } | null
+  created_at: number
+  seq: number
+}
+
 async function jsonOrThrow<T>(r: Response): Promise<T> {
   if (!r.ok) {
     let body = ""
@@ -26,5 +45,13 @@ export const api = {
   async getChunk(chunkId: string): Promise<ChunkFull> {
     const r = await fetch(`/api/chunks/${encodeURIComponent(chunkId)}`)
     return jsonOrThrow<ChunkFull>(r)
+  },
+
+  async getMessages(threadId: string): Promise<MessageRow[]> {
+    const r = await fetch(
+      `/api/threads/${encodeURIComponent(threadId)}/messages`,
+    )
+    const body = await jsonOrThrow<{ messages: MessageRow[] }>(r)
+    return body.messages
   },
 }
