@@ -92,6 +92,7 @@ function buildAdapter(
 
       let acc = ""
       const dataParts: Array<{ type: string; name: string; data: unknown }> = []
+      const REPLACE_NAMES = new Set(["status", "metadata"])
 
       const emit = (): ChatModelRunResult => ({
         content: [
@@ -114,15 +115,14 @@ function buildAdapter(
             acc += frame.text
             yield emit()
           } else if (frame.kind === "data") {
-            // 'status' data parts REPLACE any previous status — the message
-            // should only ever hold one status part reflecting the current
-            // phase (retrieving → reranking → generating → done). All other
-            // data part names append.
-            if (frame.type === "status") {
-              const idx = dataParts.findIndex((p) => p.name === "status")
+            // 'status' and 'metadata' data parts REPLACE any previous part
+            // with the same name — there should only ever be one of each
+            // reflecting the current state. All other data part names append.
+            if (REPLACE_NAMES.has(frame.type)) {
+              const idx = dataParts.findIndex((p) => p.name === frame.type)
               const next = {
                 type: "data",
-                name: "status",
+                name: frame.type,
                 data: frame.value,
               }
               if (idx >= 0) dataParts[idx] = next

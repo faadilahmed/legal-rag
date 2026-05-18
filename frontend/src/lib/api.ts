@@ -1,4 +1,4 @@
-import type { ChunkFull, ChunkPreview, CorpusTree, Thread } from "./types"
+import type { ChunkFull, ChunkPreview, CorpusTree, Thread, Trace } from "./types"
 
 export interface SourceChunkRow {
   chunk_id: string
@@ -107,5 +107,12 @@ export const api = {
     if (year) params.set("year", String(year))
     const r = await fetch(`/api/chunks?${params}`)
     return jsonOrThrow<{ items: ChunkPreview[]; total: number }>(r)
+  },
+
+  async getMessageTrace(threadId: string, messageId: string): Promise<Trace> {
+    const r = await fetch(
+      `/api/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/trace`,
+    )
+    return jsonOrThrow<Trace>(r)
   },
 }
