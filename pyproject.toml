@@ -1,0 +1,24 @@
+[project]
+name = "legal-rag"
+version = "0.1.0"
+description = "Hybrid-retrieval Q&A over SEC 10-K filings with citation-grounded generation"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Faadil Ahmed", email = "faadil.ahmed2@gmail.com"}]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "-v"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = ["E501"]  # long lines OK for prompts and config
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
