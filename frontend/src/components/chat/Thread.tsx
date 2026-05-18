@@ -147,6 +147,33 @@ const StatusDataPart: DataMessagePartComponent<StatusData> = ({
   return <StatusStepper data={data} />
 }
 
+interface FollowupsData {
+  questions: string[]
+}
+
+const FollowupsDataPart: DataMessagePartComponent<FollowupsData> = ({
+  data,
+}: DataMessagePartProps<FollowupsData>) => {
+  if (!data?.questions?.length) return null
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {data.questions.map((q: string) => (
+        <ThreadPrimitive.Suggestion key={q} prompt={q} send asChild>
+          <button
+            className={cn(
+              "group inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs",
+              "text-muted-foreground transition-colors",
+              "hover:border-primary/40 hover:bg-accent hover:text-foreground",
+            )}
+          >
+            <span>{q}</span>
+          </button>
+        </ThreadPrimitive.Suggestion>
+      ))}
+    </div>
+  )
+}
+
 const ErrorDataPart: DataMessagePartComponent<ErrorData> = ({
   data,
 }: DataMessagePartProps<ErrorData>) => {
@@ -182,6 +209,7 @@ function AssistantMessage() {
                 by_name: {
                   status: StatusDataPart as DataMessagePartComponent,
                   sources: SourcesDataPart as DataMessagePartComponent,
+                  followups: FollowupsDataPart as DataMessagePartComponent,
                   error: ErrorDataPart as DataMessagePartComponent,
                 },
               },

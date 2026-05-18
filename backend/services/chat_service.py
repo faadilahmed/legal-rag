@@ -1,5 +1,6 @@
 """Chat orchestrator: persist user → load history → retrieve+rerank →
 emit sources → stream Claude → persist assistant → auto-title → done."""
+import asyncio
 import json
 import re
 
@@ -9,6 +10,57 @@ from backend.routers.threads import db_append_message, db_set_thread_title
 from backend.services import sse
 from src.config import DENSE_TOP_K, RERANK_TOP_K
 from src.generate import CITATION_PATTERN
+
+
+FOLLOWUPS_SYSTEM = (
+    "You suggest 3 short natural follow-up questions a user might ask next "
+    "after reading the assistant's answer about SEC 10-K filings. Each "
+    "question should be self-contained (no 'it' / 'that' that depends on "
+    "the previous answer) and ≤90 characters. Return ONLY a JSON array of "
+    "3 strings, no markdown, no explanation, no preamble. Example: "
+    '["What is X?", "How does Y compare?", "Why did Z change?"]'
+)
+
+
+def _generate_followups_sync(generator, query: str, answer: str) -> list[str]:
+    """Make ONE small Claude call to produce 3 short follow-up question chips.
+    Best-effort: returns [] on any failure so the main answer is unaffected."""
+    try:
+        resp = generator.client.messages.create(
+            model=generator.model,
+            max_tokens=200,
+            system=FOLLOWUPS_SYSTEM,
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        f"Question: {query}\n\nAssistant answer: {answer[:2000]}\n\n"
+                        "Return 3 follow-up questions as a JSON array."
+                    ),
+                }
+            ],
+        )
+        text = resp.content[0].text.strip() if resp.content else ""
+        match = re.search(r"\[.*\]", text, re.DOTALL)
+        if not match:
+            return []
+        parsed = json.loads(match.group(0))
+        if not isinstance(parsed, list):
+            return []
+        # Sanitize: drop non-strings, trim, cap at 3, drop empties / overly long.
+        out: list[str] = []
+        for q in parsed:
+            if not isinstance(q, str):
+                continue
+            q = q.strip()
+            if not q or len(q) > 200:
+                continue
+            out.append(q)
+            if len(out) == 3:
+                break
+        return out
+    except Exception:
+        return []
 
 
 # Cached corpus-metadata system prompt addendum. Computed once per pipeline
@@ -197,6 +249,19 @@ async def stream_chat(
         content=full_answer,
         sources_json=json.dumps(sources_payload),
     )
+
+    # Suggested follow-ups — one extra small Claude call (~200 tokens,
+    # ~$0.005). Best-effort: silently emits no frame on any failure so
+    # the main answer never depends on this succeeding.
+    if full_answer.strip():
+        followups = await asyncio.to_thread(
+            _generate_followups_sync,
+            pipeline.generator,
+            user_content,
+            full_answer,
+        )
+        if followups:
+            yield sse.data_part("followups", {"questions": followups})
 
     # 6. Auto-title on first turn
     if is_first_turn:

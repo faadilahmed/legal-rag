@@ -16,7 +16,7 @@ interface AppShellProps {
 export function AppShell({ children, threadsState }: AppShellProps) {
   return (
     <div className="flex h-screen w-screen flex-col bg-background text-foreground">
-      <Header />
+      <Header threadsState={threadsState} />
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         <ResizablePanel
           defaultSize={22}
