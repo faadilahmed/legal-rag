@@ -12,8 +12,11 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 
 # Matches 'Item 1.' / 'Item 1A.' / 'Item 7A —' etc.
+# Anchored to line start so mid-sentence cross-references like
+# '...read in conjunction with Part II, Item 7, "Management\'s..."'
+# don't match and prematurely terminate a real section's span.
 ITEM_PATTERN = re.compile(
-    r"Item\s+(\d+[A-Z]?)\.?\s*[—\-–]?\s*([^\n]{1,100})",
+    r"^\s*Item\s+(\d+[A-Z]?)\.?\s*[—\-–]?\s*([^\n]{1,100})",
     re.MULTILINE | re.IGNORECASE,
 )
 
@@ -49,9 +52,16 @@ def extract_10k_html(submission: str) -> str:
 
 
 def html_to_text(html: str) -> str:
-    """Strip HTML, drop scripts/styles/tables, normalize unicode and whitespace."""
+    """Strip HTML, drop scripts/styles, normalize unicode and whitespace.
+
+    Tables are KEPT: SEC filings use HTML tables for layout, including for the
+    Table of Contents and for prose sections. Stripping tables drops most of
+    the substantive content (e.g., AAPL's Risk Factors section is rendered
+    inside table cells). Financial tables come through too, which is desirable
+    for numeric Q&A.
+    """
     soup = BeautifulSoup(html, "lxml")
-    for tag in soup(["script", "style", "table"]):
+    for tag in soup(["script", "style"]):
         tag.decompose()
     text = soup.get_text(separator="\n")
     text = unicodedata.normalize("NFKC", text)
@@ -109,10 +119,19 @@ def extract_sections(text: str) -> list[dict]:
     if not matches:
         return []
 
+    # Cap candidate spans at 100k chars. A real 10-K Item rarely exceeds this;
+    # huge spans usually come from cross-references followed by long runs of
+    # text with no further Item matches, which would otherwise sweep up
+    # multiple legitimate sections.
+    MAX_SECTION_CHARS = 100_000
+
     spans = []
     for i, match in enumerate(matches):
         start = match.start()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        length = end - start
+        if length > MAX_SECTION_CHARS:
+            continue  # implausibly long — skip rather than mislabel a huge chunk
         title = match.group(2).strip()[:80]
         spans.append({
             "item": match.group(1).upper(),
@@ -120,7 +139,7 @@ def extract_sections(text: str) -> list[dict]:
             "start": start,
             "end": end,
             "text": text[start:end].strip(),
-            "length": end - start,
+            "length": length,
             "score": _title_score(title),
         })
 
