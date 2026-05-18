@@ -172,30 +172,24 @@ export function PipelineDiagram() {
   }, [activeId])
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <p className="text-xs text-muted-foreground">
         Click any stage to see what it does. Use arrow keys to cycle.
       </p>
 
-      {/* Diagram — horizontal flow with pulsing arrows between boxes */}
-      <div className="overflow-x-auto pb-2">
-        <div className="grid min-w-max grid-cols-[repeat(15,minmax(0,1fr))] items-stretch gap-0">
-          {STAGES.map((stage, i) => (
-            <div
-              key={stage.id}
-              className={cn(
-                "contents",
-              )}
-            >
-              <StageBox
-                stage={stage}
-                active={stage.id === activeId}
-                onClick={() => setActiveId(stage.id)}
-              />
-              {i < STAGES.length - 1 && <Arrow />}
-            </div>
-          ))}
-        </div>
+      {/* Diagram — 4-column grid, wraps to 2 rows so all 8 stages fit
+          inside the modal without horizontal scroll. Reading order is
+          left-to-right, top-to-bottom. */}
+      <div className="grid grid-cols-4 gap-x-2 gap-y-3">
+        {STAGES.map((stage, i) => (
+          <StageBox
+            key={stage.id}
+            stage={stage}
+            active={stage.id === activeId}
+            index={i}
+            onClick={() => setActiveId(stage.id)}
+          />
+        ))}
       </div>
 
       {/* Phase legend */}
@@ -219,10 +213,12 @@ export function PipelineDiagram() {
 function StageBox({
   stage,
   active,
+  index,
   onClick,
 }: {
   stage: PipelineStage
   active: boolean
+  index: number
   onClick: () => void
 }) {
   const Icon = stage.icon
@@ -235,13 +231,15 @@ function StageBox({
       type="button"
       onClick={onClick}
       className={cn(
-        "col-span-1 flex flex-col items-center justify-center rounded-lg border bg-card p-3 text-center transition-all",
+        "relative flex min-w-0 flex-col items-center justify-center rounded-lg border bg-card p-3 text-center transition-all",
         active
           ? `border-primary ring-2 ring-inset ${phaseRing}`
           : "border-border hover:bg-accent",
       )}
-      style={{ minWidth: 96 }}
     >
+      <span className="absolute left-1.5 top-1 text-[9px] font-mono text-muted-foreground/60">
+        {index + 1}
+      </span>
       <Icon
         className={cn(
           "h-5 w-5 shrink-0",
@@ -258,30 +256,9 @@ function StageBox({
   )
 }
 
-function Arrow() {
-  return (
-    <div
-      className="col-span-1 flex items-center justify-center"
-      style={{ minWidth: 24 }}
-    >
-      <svg
-        viewBox="0 0 24 12"
-        className="h-3 w-full text-primary/50 pipeline-arrow"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      >
-        <path d="M2 6 L22 6" />
-        <path d="M18 2 L22 6 L18 10" />
-      </svg>
-    </div>
-  )
-}
-
 function StageDetail({ stage }: { stage: PipelineStage }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-5">
+    <div className="min-w-0 rounded-lg border border-border bg-card p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -304,7 +281,7 @@ function StageDetail({ stage }: { stage: PipelineStage }) {
       </div>
 
       {stage.model && (
-        <p className="mt-3 font-mono text-[11px] text-muted-foreground">
+        <p className="mt-3 break-words font-mono text-[11px] text-muted-foreground">
           <span className="font-medium text-foreground">Model / lib:</span>{" "}
           {stage.model}
         </p>
@@ -314,14 +291,16 @@ function StageDetail({ stage }: { stage: PipelineStage }) {
         <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Why
         </p>
-        <p className="text-xs leading-relaxed text-foreground">{stage.why}</p>
+        <p className="break-words text-xs leading-relaxed text-foreground">
+          {stage.why}
+        </p>
       </div>
 
       <div className="mt-3 space-y-1">
         <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Code
         </p>
-        <pre className="overflow-auto rounded-md border border-border bg-muted/30 p-3 font-mono text-[10px] leading-relaxed text-foreground">
+        <pre className="max-w-full overflow-x-auto rounded-md border border-border bg-muted/30 p-3 font-mono text-[10px] leading-relaxed text-foreground">
           {stage.code}
         </pre>
       </div>
@@ -330,7 +309,7 @@ function StageDetail({ stage }: { stage: PipelineStage }) {
         <p className="text-[10px] font-medium uppercase tracking-wider text-primary">
           Key fact
         </p>
-        <p className="mt-1 text-xs text-foreground">{stage.keyFact}</p>
+        <p className="mt-1 break-words text-xs text-foreground">{stage.keyFact}</p>
       </div>
     </div>
   )

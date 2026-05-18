@@ -38,25 +38,25 @@ export function InfoDialog({ open, onOpenChange }: InfoDialogProps) {
             </TabsList>
             <TabsContent
               value="overview"
-              className="mt-0 flex-1 overflow-y-auto px-6 pb-6 pt-4"
+              className="mt-0 flex-1 min-h-0 min-w-0 overflow-y-auto px-6 pb-6 pt-4"
             >
               <OverviewTab />
             </TabsContent>
             <TabsContent
               value="pipeline"
-              className="mt-0 flex-1 overflow-y-auto px-6 pb-6 pt-4"
+              className="mt-0 flex-1 min-h-0 min-w-0 overflow-y-auto px-6 pb-6 pt-4"
             >
               <PipelineTab />
             </TabsContent>
             <TabsContent
               value="stack"
-              className="mt-0 flex-1 overflow-y-auto px-6 pb-6 pt-4"
+              className="mt-0 flex-1 min-h-0 min-w-0 overflow-y-auto px-6 pb-6 pt-4"
             >
               <StackTab />
             </TabsContent>
             <TabsContent
               value="eval"
-              className="mt-0 flex-1 overflow-y-auto px-6 pb-6 pt-4"
+              className="mt-0 flex-1 min-h-0 min-w-0 overflow-y-auto px-6 pb-6 pt-4"
             >
               <EvalTab />
             </TabsContent>
