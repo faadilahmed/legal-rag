@@ -36,7 +36,7 @@ class Message(BaseModel):
     id: str
     role: Literal["user", "assistant"]
     content: str
-    sources: list[Any] | None = None
+    sources: dict | list | None = None
     created_at: int
     seq: int
 
