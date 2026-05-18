@@ -18,6 +18,7 @@ from backend.config import CORS_ORIGINS, DB_PATH  # noqa: E402
 from backend.db import init_schema  # noqa: E402
 from backend.deps import get_pipeline  # noqa: E402
 from backend.models import HealthResponse  # noqa: E402
+from backend.routers import threads as threads_router  # noqa: E402
 from src.pipeline import RAGPipeline  # noqa: E402
 
 
@@ -43,6 +44,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(threads_router.router)
 
 
 @app.get("/api/health", response_model=HealthResponse)

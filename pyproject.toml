@@ -7,9 +7,10 @@ requires-python = ">=3.10"
 authors = [{name = "Faadil Ahmed", email = "faadil.ahmed2@gmail.com"}]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "backend/tests"]
 python_files = "test_*.py"
 addopts = "-v"
+asyncio_mode = "auto"
 
 [tool.ruff]
 line-length = 100
