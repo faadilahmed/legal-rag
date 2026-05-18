@@ -110,7 +110,26 @@ function buildAdapter(
             acc += frame.text
             yield emit()
           } else if (frame.kind === "data") {
-            dataParts.push({ type: "data", name: frame.type, data: frame.value })
+            // 'status' data parts REPLACE any previous status — the message
+            // should only ever hold one status part reflecting the current
+            // phase (retrieving → reranking → generating → done). All other
+            // data part names append.
+            if (frame.type === "status") {
+              const idx = dataParts.findIndex((p) => p.name === "status")
+              const next = {
+                type: "data",
+                name: "status",
+                data: frame.value,
+              }
+              if (idx >= 0) dataParts[idx] = next
+              else dataParts.push(next)
+            } else {
+              dataParts.push({
+                type: "data",
+                name: frame.type,
+                data: frame.value,
+              })
+            }
             yield emit()
           } else if (frame.kind === "done") {
             return

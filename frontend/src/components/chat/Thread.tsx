@@ -17,7 +17,12 @@ import type {
 } from "@assistant-ui/react"
 
 import { Button } from "@/components/ui/button"
+import {
+  CitationProvider,
+  useCitationOptional,
+} from "@/components/chat/CitationContext"
 import { SourcesPanel } from "@/components/chat/SourcesPanel"
+import { StatusStepper, type StatusData } from "@/components/chat/StatusStepper"
 import type { SourcesData } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -28,15 +33,39 @@ interface ErrorData {
 // Inline [CHUNK_ID] citation pattern as it appears in the model's text.
 const CITATION_RE = /\[([A-Za-z0-9_]+)\]/g
 
-/** Visual chip for an inline [CHUNK_ID] reference. */
+/** Visual chip for an inline [CHUNK_ID] reference.
+ *
+ * When inside a CitationProvider (i.e., in an AssistantMessage), hover and
+ * click are interactive: hover highlights + scrolls to the matching source
+ * card; click opens the ChunkSheet directly. Outside a provider, it's just a
+ * decorative pill. */
 function CitationPill({ chunkId }: { chunkId: string }) {
+  const cite = useCitationOptional()
+
+  const interactive = cite !== null
+  const isHovered = cite?.hoveredChunkId === chunkId
+
   return (
-    <span
-      className="mx-0.5 inline-flex items-baseline rounded-md bg-primary/10 px-1.5 py-px font-mono text-[10px] font-medium text-primary ring-1 ring-inset ring-primary/20 align-baseline"
+    <button
+      type="button"
       title={chunkId}
+      disabled={!interactive}
+      onMouseEnter={() => {
+        if (!cite) return
+        cite.setHoveredChunkId(chunkId)
+        cite.scrollToCard(chunkId)
+      }}
+      onMouseLeave={() => cite?.setHoveredChunkId(null)}
+      onClick={() => cite?.setOpenChunkId(chunkId)}
+      className={cn(
+        "mx-0.5 inline-flex items-baseline rounded-md px-1.5 py-px font-mono text-[10px] font-medium align-baseline transition-colors",
+        "bg-primary/10 text-primary ring-1 ring-inset ring-primary/20",
+        interactive && "cursor-pointer hover:bg-primary/20 hover:ring-primary/40",
+        isHovered && "bg-primary/25 ring-primary/50",
+      )}
     >
       {chunkId}
-    </span>
+    </button>
   )
 }
 
@@ -111,6 +140,13 @@ const SourcesDataPart: DataMessagePartComponent<SourcesData> = ({
   return <SourcesPanel chunks={data.chunks} />
 }
 
+const StatusDataPart: DataMessagePartComponent<StatusData> = ({
+  data,
+}: DataMessagePartProps<StatusData>) => {
+  if (!data?.phase) return null
+  return <StatusStepper data={data} />
+}
+
 const ErrorDataPart: DataMessagePartComponent<ErrorData> = ({
   data,
 }: DataMessagePartProps<ErrorData>) => {
@@ -132,25 +168,87 @@ function UserMessage() {
 
 function AssistantMessage() {
   return (
-    <MessagePrimitive.Root className="my-6 flex gap-3">
-      <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-1 ring-inset ring-primary/20">
-        <Bot className="h-4 w-4 text-primary" />
-      </div>
-      <div className="min-w-0 flex-1 text-sm text-foreground">
-        <MessagePrimitive.Content
-          components={{
-            Text: MarkdownText,
-            Empty: ThinkingIndicator,
-            data: {
-              by_name: {
-                sources: SourcesDataPart as DataMessagePartComponent,
-                error: ErrorDataPart as DataMessagePartComponent,
+    <CitationProvider>
+      <MessagePrimitive.Root className="my-6 flex gap-3">
+        <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-1 ring-inset ring-primary/20">
+          <Bot className="h-4 w-4 text-primary" />
+        </div>
+        <div className="min-w-0 flex-1 text-sm text-foreground">
+          <MessagePrimitive.Content
+            components={{
+              Text: MarkdownText,
+              Empty: ThinkingIndicator,
+              data: {
+                by_name: {
+                  status: StatusDataPart as DataMessagePartComponent,
+                  sources: SourcesDataPart as DataMessagePartComponent,
+                  error: ErrorDataPart as DataMessagePartComponent,
+                },
               },
-            },
-          }}
-        />
+            }}
+          />
+        </div>
+      </MessagePrimitive.Root>
+    </CitationProvider>
+  )
+}
+
+const EXAMPLE_PROMPTS: { tag: string; prompt: string }[] = [
+  {
+    tag: "Factual",
+    prompt: "What are Apple's main supply chain risks?",
+  },
+  {
+    tag: "Comparative",
+    prompt:
+      "How do JPMorgan and Goldman Sachs describe trading and market-making risks?",
+  },
+  {
+    tag: "Multi-company",
+    prompt:
+      "Which technology companies cite AI as both an opportunity and a regulatory risk?",
+  },
+  {
+    tag: "Evolution",
+    prompt:
+      "How has Apple's discussion of China-related risks changed since 2022?",
+  },
+]
+
+function EmptyState() {
+  return (
+    <div className="flex h-full min-h-[60vh] flex-col items-center justify-center py-12 text-center">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 ring-1 ring-inset ring-primary/20">
+        <Bot className="h-6 w-6 text-primary" />
       </div>
-    </MessagePrimitive.Root>
+      <h2 className="text-xl font-semibold tracking-tight">SEC 10-K Q&amp;A</h2>
+      <p className="mt-1 max-w-md text-sm text-muted-foreground">
+        Hybrid retrieval over 387 filings (76 companies × 5 years) with
+        citation-grounded answers from Claude.
+      </p>
+      <div className="mt-8 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
+        {EXAMPLE_PROMPTS.map(({ tag, prompt }) => (
+          <ThreadPrimitive.Suggestion
+            key={prompt}
+            prompt={prompt}
+            send
+            asChild
+          >
+            <button
+              className={cn(
+                "group flex flex-col items-start gap-1 rounded-lg border border-border bg-card p-3 text-left",
+                "transition-colors hover:bg-accent hover:border-primary/30",
+              )}
+            >
+              <span className="font-mono text-[10px] uppercase tracking-wider text-primary/80 group-hover:text-primary">
+                {tag}
+              </span>
+              <span className="text-sm text-foreground">{prompt}</span>
+            </button>
+          </ThreadPrimitive.Suggestion>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -160,18 +258,7 @@ export function Thread() {
       <ThreadPrimitive.Viewport className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl px-6">
           <ThreadPrimitive.Empty>
-            <div className="flex h-full min-h-[60vh] flex-col items-center justify-center text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 ring-1 ring-inset ring-primary/20">
-                <Bot className="h-6 w-6 text-primary" />
-              </div>
-              <h2 className="text-xl font-semibold tracking-tight">
-                SEC 10-K Q&amp;A
-              </h2>
-              <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                Hybrid retrieval over 76 filings with citation-grounded answers
-                from Claude. Ask anything to get started.
-              </p>
-            </div>
+            <EmptyState />
           </ThreadPrimitive.Empty>
           <ThreadPrimitive.Messages
             components={{ UserMessage, AssistantMessage }}

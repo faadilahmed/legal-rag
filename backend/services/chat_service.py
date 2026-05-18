@@ -126,12 +126,30 @@ async def stream_chat(
     await db_append_message(db, thread_id, "user", user_content)
 
     # 2. Retrieve + rerank (apply ticker filter if present)
+    # Emit phase status BEFORE each step so the UI can render a live stepper.
+    # The frontend special-cases data-part name="status" to REPLACE rather
+    # than APPEND so the message only ever holds the most recent phase.
+    n_chunks_total = len(pipeline.index.chunks)
+    yield sse.data_part(
+        "status",
+        {"phase": "retrieving", "label": f"Searching {n_chunks_total:,} chunks"},
+    )
     ticker_set = set(ticker_filter) if ticker_filter else None
     candidates = pipeline.retriever.retrieve(
         user_content, k=DENSE_TOP_K, ticker_filter=ticker_set
     )
+
     top_k = top_k_rerank or RERANK_TOP_K
+    yield sse.data_part(
+        "status",
+        {"phase": "reranking", "label": f"Reranking {len(candidates)} candidates"},
+    )
     reranked = pipeline.reranker.rerank(user_content, candidates, top_k=top_k)
+
+    yield sse.data_part(
+        "status",
+        {"phase": "generating", "label": f"Generating from top {len(reranked)} sources"},
+    )
 
     # 3. Emit sources FIRST (so the UI mounts the panel before text streams in)
     yield sse.data_part(
@@ -156,6 +174,9 @@ async def stream_chat(
     except Exception as e:  # surface any model/network error to the client
         yield sse.error(f"{type(e).__name__}: {e}")
         return
+
+    # Streaming finished — mark phase complete so the UI can collapse the stepper.
+    yield sse.data_part("status", {"phase": "done", "label": "Done"})
 
     # 5. Persist assistant message + sources
     full_answer = "".join(accumulated)
