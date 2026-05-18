@@ -24,7 +24,7 @@ CHUNK_OVERLAP = 100
 # Retrieval
 DENSE_TOP_K = 50
 SPARSE_TOP_K = 50
-RERANK_TOP_K = 5
+RERANK_TOP_K = 8
 RRF_K = 60
 
 # SEC EDGAR — used to construct the User-Agent header per SEC's fair-access policy.
