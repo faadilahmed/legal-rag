@@ -117,6 +117,7 @@ class Generator:
         query: str,
         chunks: list[dict],
         history: list[dict] | None = None,
+        extra_system: str | None = None,
     ):
         """Streaming multi-turn. Returns the Anthropic stream context manager.
 
@@ -127,6 +128,10 @@ class Generator:
                     ...
                 final = stream.get_final_message()  # for usage stats
 
+        `extra_system` is appended to CHAT_SYSTEM_PROMPT — used by the chat
+        service to inject runtime-computed corpus metadata so the model can
+        answer meta-questions about the knowledge base it has access to.
+
         The caller is responsible for accumulating tokens and persisting the
         final message; this method does not accumulate or persist.
         """
@@ -135,9 +140,12 @@ class Generator:
             context=self._format_context(chunks), query=query
         )
         messages = [*history, {"role": "user", "content": context_msg}]
+        system = CHAT_SYSTEM_PROMPT
+        if extra_system:
+            system = f"{system}\n\n{extra_system}"
         return self.client.messages.stream(
             model=self.model,
             max_tokens=1024,
-            system=CHAT_SYSTEM_PROMPT,
+            system=system,
             messages=messages,
         )

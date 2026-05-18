@@ -11,6 +11,39 @@ from src.config import DENSE_TOP_K, RERANK_TOP_K
 from src.generate import CITATION_PATTERN
 
 
+# Cached corpus-metadata system prompt addendum. Computed once per pipeline
+# instance the first time we see it — the corpus is fixed for a given run.
+# Lets Claude answer meta-questions like "how many companies do you cover?"
+# from its system context, while still grounding factual claims in chunks.
+_CORPUS_META_CACHE: dict[int, str] = {}
+
+
+def _corpus_meta(pipeline) -> str:
+    key = id(pipeline.index)
+    cached = _CORPUS_META_CACHE.get(key)
+    if cached:
+        return cached
+    chunks = pipeline.index.chunks
+    tickers = sorted({c["ticker"] for c in chunks})
+    items = sorted({c["item"] for c in chunks})
+    note = (
+        "Knowledge-base metadata (use to answer meta-questions about the "
+        "corpus itself — what filings you have access to, how many companies, "
+        "what sections exist; do NOT use to invent factual content about "
+        "specific companies — that still must come from the retrieved chunks):"
+        f"\n- {len(chunks):,} chunks across {len(tickers)} companies' most "
+        "recent 10-K (annual report) filings, sourced from SEC EDGAR."
+        "\n- 10 sectors covered: Tech, Finance, Healthcare, Energy, Consumer, "
+        "Industrial, Telecom/Media, Real Estate, Utilities, Materials."
+        f"\n- Tickers indexed ({len(tickers)} total): "
+        f"{', '.join(tickers)}."
+        f"\n- 10-K Items represented across the corpus: {', '.join(items)}."
+        "\n- Each user query retrieves the 5 most relevant chunks from this corpus."
+    )
+    _CORPUS_META_CACHE[key] = note
+    return note
+
+
 def _chunk_to_source(c: dict) -> dict:
     """Project only safe-to-wire fields for the SSE sources frame.
     Full text is fetched on demand via /api/chunks/{id}."""
@@ -95,6 +128,7 @@ async def stream_chat(
             query=user_content,
             chunks=reranked,
             history=history_msgs,
+            extra_system=_corpus_meta(pipeline),
         ) as stream:
             for text in stream.text_stream:
                 accumulated.append(text)
