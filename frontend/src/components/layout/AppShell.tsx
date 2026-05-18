@@ -5,6 +5,8 @@ import {
 } from "@/components/ui/resizable"
 import type { ThreadsState } from "@/hooks/useThreads"
 
+import { InfoButton } from "@/components/info/InfoButton"
+
 import { Header } from "./Header"
 import { LeftSidebar } from "./LeftSidebar"
 
@@ -31,6 +33,7 @@ export function AppShell({ children, threadsState }: AppShellProps) {
           <div className="h-full overflow-y-auto">{children}</div>
         </ResizablePanel>
       </ResizablePanelGroup>
+      <InfoButton />
     </div>
   )
 }
