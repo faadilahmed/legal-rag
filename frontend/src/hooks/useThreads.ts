@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useState } from "react"
+import { toast } from "sonner"
 
 import { api } from "@/lib/api"
 import type { Thread } from "@/lib/types"
 
 const ACTIVE_KEY = "legal-rag.thread_id"
+
+// A thread whose title is still the default placeholder counts as "empty".
+// Once the user sends their first message, the backend auto-titles the
+// thread (see backend/services/chat_service.py:_title_from), so the title
+// stops matching "New chat" and the thread no longer counts toward the cap.
+const EMPTY_TITLE = "New chat"
+const MAX_EMPTY_THREADS = 3
 
 export function useThreads() {
   const [threads, setThreads] = useState<Thread[]>([])
@@ -32,11 +40,27 @@ export function useThreads() {
   }, [])
 
   const createThread = useCallback(async (): Promise<Thread> => {
+    // Cap empty threads: if MAX_EMPTY_THREADS already exist with the
+    // default "New chat" title, focus the most recent one instead of
+    // spawning another. This is just a UX guard — once any of them
+    // gets a user message, its title changes and it stops counting.
+    const emptyThreads = threads.filter((t) => t.title === EMPTY_TITLE)
+    if (emptyThreads.length >= MAX_EMPTY_THREADS) {
+      const mostRecent = emptyThreads.reduce((a, b) =>
+        b.created_at > a.created_at ? b : a,
+      )
+      setActiveId(mostRecent.id)
+      toast.info(
+        `You already have ${emptyThreads.length} empty chats. Ask a question in one before starting another.`,
+      )
+      return mostRecent
+    }
+
     const t = await api.createThread()
     setThreads((prev) => [t, ...prev])
     setActiveId(t.id)
     return t
-  }, [setActiveId])
+  }, [setActiveId, threads])
 
   const renameThread = useCallback(async (id: string, title: string) => {
     const updated = await api.renameThread(id, title)
