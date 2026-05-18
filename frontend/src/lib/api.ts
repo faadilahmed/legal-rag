@@ -54,4 +54,35 @@ export const api = {
     const body = await jsonOrThrow<{ messages: MessageRow[] }>(r)
     return body.messages
   },
+
+  async listThreads(): Promise<Thread[]> {
+    const r = await fetch("/api/threads")
+    const body = await jsonOrThrow<{ threads: Thread[] }>(r)
+    return body.threads
+  },
+
+  async renameThread(id: string, title: string): Promise<Thread> {
+    const r = await fetch(`/api/threads/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    })
+    return jsonOrThrow<Thread>(r)
+  },
+
+  async deleteThread(id: string): Promise<void> {
+    const r = await fetch(`/api/threads/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    })
+    await jsonOrThrow<{ deleted: boolean }>(r)
+  },
+
+  async archiveThread(id: string, archived: boolean): Promise<Thread> {
+    const r = await fetch(`/api/threads/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived }),
+    })
+    return jsonOrThrow<Thread>(r)
+  },
 }

@@ -3,15 +3,17 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
+import type { ThreadsState } from "@/hooks/useThreads"
 
 import { Header } from "./Header"
 import { LeftSidebar } from "./LeftSidebar"
 
 interface AppShellProps {
   children: React.ReactNode
+  threadsState: ThreadsState
 }
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, threadsState }: AppShellProps) {
   return (
     <div className="flex h-screen w-screen flex-col bg-background text-foreground">
       <Header />
@@ -22,7 +24,7 @@ export function AppShell({ children }: AppShellProps) {
           maxSize={40}
           className="border-r border-border"
         >
-          <LeftSidebar />
+          <LeftSidebar threadsState={threadsState} />
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={78}>

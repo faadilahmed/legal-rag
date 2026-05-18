@@ -9,17 +9,8 @@ import type { ThreadMessageLike } from "@assistant-ui/core"
 
 import { api, type MessageRow } from "@/lib/api"
 import { parseStream } from "@/lib/sse"
+import type { Thread } from "@/lib/types"
 import type { SourcesData } from "@/lib/types"
-
-const THREAD_ID_KEY = "legal-rag.thread_id"
-
-async function ensureThreadId(): Promise<string> {
-  const existing = window.localStorage.getItem(THREAD_ID_KEY)
-  if (existing) return existing
-  const created = await api.createThread()
-  window.localStorage.setItem(THREAD_ID_KEY, created.id)
-  return created.id
-}
 
 /**
  * Convert a DB message row to the ThreadMessageLike shape that
@@ -119,55 +110,70 @@ export interface LegalRagRuntimeResult {
   hydrated: boolean
 }
 
-export function useLegalRagRuntime(): LegalRagRuntimeResult {
-  const [threadId, setThreadId] = useState<string | null>(null)
+/**
+ * useLegalRagRuntime
+ *
+ * @param activeThreadId  The thread ID currently selected in the sidebar.
+ *                        Pass null if no thread is known yet (initial load).
+ * @param onCreateThread  Callback that creates a new thread server-side and
+ *                        updates the thread list / activeId in the parent store.
+ *                        The runtime calls it lazily — only when the user
+ *                        actually sends the first message.
+ */
+export function useLegalRagRuntime(
+  activeThreadId: string | null,
+  onCreateThread: () => Promise<Thread>,
+): LegalRagRuntimeResult {
+  const [threadId, setThreadId] = useState<string | null>(activeThreadId)
   const [initialMessages, setInitialMessages] = useState<
     readonly ThreadMessageLike[] | null
   >(null)
 
-  // On mount: resolve thread_id, fetch its prior messages, then set both.
-  // We wait until we have messages (or an empty array on error) before
-  // letting the runtime render, so history always appears on first paint.
+  // Whenever the active thread changes (sidebar click or first mount),
+  // load its messages. We reset `initialMessages` to null so the runtime
+  // re-renders in a loading state.
   useEffect(() => {
     let cancelled = false
+    setInitialMessages(null)
+    setThreadId(null)
+
+    if (!activeThreadId) {
+      // No thread yet — start with an empty list; the adapter will create one
+      // lazily when the user sends the first message.
+      setInitialMessages([])
+      return
+    }
+
     void (async () => {
       try {
-        const tid = await ensureThreadId()
+        const rows = await api.getMessages(activeThreadId)
         if (cancelled) return
-        const rows = await api.getMessages(tid)
-        if (cancelled) return
-        setThreadId(tid)
+        setThreadId(activeThreadId)
         setInitialMessages(rows.map(dbRowToMessageLike))
       } catch {
-        // Thread was deleted server-side or network error — reset and start fresh.
-        window.localStorage.removeItem(THREAD_ID_KEY)
-        try {
-          const fresh = await ensureThreadId()
-          if (!cancelled) {
-            setThreadId(fresh)
-            setInitialMessages([])
-          }
-        } catch {
-          if (!cancelled) setInitialMessages([])
-        }
+        if (cancelled) return
+        // Thread may have been deleted server-side — let the parent know.
+        // We render an empty thread rather than crashing.
+        setThreadId(activeThreadId)
+        setInitialMessages([])
       }
     })()
+
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [activeThreadId])
 
+  // The adapter resolves the threadId lazily: if there is an activeThreadId
+  // use it directly; otherwise call onCreateThread() to make one.
   const adapter = useMemo((): ChatModelAdapter => {
-    if (!threadId) {
-      // No-op adapter while we're still loading — won't be called because
-      // we gate the Thread render on `hydrated`.
-      return {
-        async *run() {
-          // nothing
-        },
-      }
-    }
-    return buildAdapter(() => Promise.resolve(threadId))
+    return buildAdapter(async () => {
+      if (threadId) return threadId
+      const created = await onCreateThread()
+      setThreadId(created.id)
+      return created.id
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId])
 
   // useLocalRuntime must be called unconditionally (React rules).
