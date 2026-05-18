@@ -3,6 +3,7 @@ import { MessagesSquare, FolderOpen } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ThreadList } from "@/components/threads/ThreadList"
+import { DocumentBrowser } from "@/components/corpus/DocumentBrowser"
 import type { ThreadsState } from "@/hooks/useThreads"
 
 interface LeftSidebarProps {
@@ -37,11 +38,8 @@ export function LeftSidebar({ threadsState }: LeftSidebarProps) {
         />
       </TabsContent>
       <TabsContent value="documents" className="m-0 flex-1 overflow-hidden">
-        <ScrollArea className="h-full px-2 pb-2">
-          {/* DocumentBrowser lands here in Phase E2 */}
-          <p className="px-2 py-4 text-xs text-muted-foreground">
-            The 76 indexed 10-K filings will appear here.
-          </p>
+        <ScrollArea className="h-full">
+          <DocumentBrowser />
         </ScrollArea>
       </TabsContent>
     </Tabs>

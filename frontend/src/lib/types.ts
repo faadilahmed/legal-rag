@@ -28,3 +28,34 @@ export interface ChunkFull {
   text: string
   char_count: number
 }
+
+export interface CorpusItem {
+  item: string
+  chunk_count: number
+}
+
+export interface CorpusTicker {
+  ticker: string
+  chunk_count: number
+  items: CorpusItem[]
+}
+
+export interface CorpusSector {
+  name: string
+  ticker_count: number
+  chunk_count: number
+  tickers: CorpusTicker[]
+}
+
+export interface CorpusTree {
+  sectors: CorpusSector[]
+}
+
+export interface ChunkPreview {
+  chunk_id: string
+  ticker: string
+  item: string
+  section_title: string
+  char_count: number
+  preview: string
+}

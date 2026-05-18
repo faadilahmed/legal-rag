@@ -1,4 +1,4 @@
-import type { ChunkFull, Thread } from "./types"
+import type { ChunkFull, ChunkPreview, CorpusTree, Thread } from "./types"
 
 export interface SourceChunkRow {
   chunk_id: string
@@ -84,5 +84,26 @@ export const api = {
       body: JSON.stringify({ archived }),
     })
     return jsonOrThrow<Thread>(r)
+  },
+
+  async getCorpus(): Promise<CorpusTree> {
+    const r = await fetch("/api/corpus")
+    return jsonOrThrow<CorpusTree>(r)
+  },
+
+  async listChunks(
+    ticker: string,
+    item: string,
+    limit = 200,
+    offset = 0,
+  ): Promise<{ items: ChunkPreview[]; total: number }> {
+    const params = new URLSearchParams({
+      ticker,
+      item,
+      limit: String(limit),
+      offset: String(offset),
+    })
+    const r = await fetch(`/api/chunks?${params}`)
+    return jsonOrThrow<{ items: ChunkPreview[]; total: number }>(r)
   },
 }
