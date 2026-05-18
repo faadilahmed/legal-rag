@@ -170,7 +170,7 @@ async def stream_chat(
     from backend.routers.threads import _row_to_message  # internal helper
 
     async with db.execute(
-        "SELECT id, role, content, sources_json, created_at, seq "
+        "SELECT id, role, content, sources_json, created_at, seq, trace_json "
         "FROM messages WHERE thread_id = ? ORDER BY seq ASC",
         (thread_id,),
     ) as cur:
