@@ -1,0 +1,499 @@
+{
+  "retrieval": {
+    "recall@5": 0.8333333333333334,
+    "mrr": 0.7233333333333333
+  },
+  "note": "RAGAS (faithfulness/answer_relevancy/context_precision) requires OPENAI_API_KEY; not run here.",
+  "per_query_diagnostic": [
+    {
+      "query": "What are Apple's main supply chain risks?",
+      "expected": [
+        "AAPL"
+      ],
+      "retrieved": [
+        "GOOGL",
+        "AAPL",
+        "DE",
+        "AAPL",
+        "RTX"
+      ],
+      "hit": true,
+      "first_hit_rank": 2
+    },
+    {
+      "query": "How does NVIDIA describe US export restrictions on its chips",
+      "expected": [
+        "NVDA"
+      ],
+      "retrieved": [
+        "NVDA",
+        "NVDA",
+        "NVDA",
+        "NVDA",
+        "NVDA"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "What does Microsoft say about competition in its cloud busin",
+      "expected": [
+        "MSFT"
+      ],
+      "retrieved": [
+        "JNJ",
+        "ADBE",
+        "COST",
+        "ORCL",
+        "CMCSA"
+      ],
+      "hit": false,
+      "first_hit_rank": null
+    },
+    {
+      "query": "What regulatory consent orders does Wells Fargo disclose?",
+      "expected": [
+        "WFC"
+      ],
+      "retrieved": [
+        "WFC",
+        "NFLX",
+        "WFC",
+        "WFC",
+        "WFC"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "What does Boeing disclose about 737 MAX quality control issu",
+      "expected": [
+        "BA"
+      ],
+      "retrieved": [
+        "BA",
+        "BA",
+        "BA",
+        "BA",
+        "RTX"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "What pricing pressures does Pfizer cite in its risk factors?",
+      "expected": [
+        "PFE"
+      ],
+      "retrieved": [
+        "PFE",
+        "PFE",
+        "ABBV",
+        "PFE",
+        "ABBV"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "How does Netflix describe its content acquisition strategy?",
+      "expected": [
+        "NFLX"
+      ],
+      "retrieved": [
+        "NFLX",
+        "NFLX",
+        "CMCSA",
+        "NFLX",
+        "NFLX"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "What does Tesla say about its dependence on Elon Musk?",
+      "expected": [
+        "TSLA"
+      ],
+      "retrieved": [
+        "TSLA",
+        "TSLA",
+        "TSLA",
+        "TSLA",
+        "TSLA"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "How do Google and Meta describe regulatory risk around digit",
+      "expected": [
+        "GOOGL",
+        "META"
+      ],
+      "retrieved": [
+        "META",
+        "META",
+        "GOOGL",
+        "GOOGL",
+        "GOOGL"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "How do JPMorgan and Goldman Sachs describe trading and marke",
+      "expected": [
+        "GS",
+        "JPM"
+      ],
+      "retrieved": [
+        "JPM",
+        "BLK",
+        "GS",
+        "GS",
+        "PSX"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "How do major pharmaceutical companies describe patent cliff ",
+      "expected": [
+        "ABBV",
+        "BMY",
+        "MRK",
+        "PFE"
+      ],
+      "retrieved": [
+        "LLY",
+        "PFE",
+        "LLY",
+        "LLY",
+        "LLY"
+      ],
+      "hit": true,
+      "first_hit_rank": 2
+    },
+    {
+      "query": "How do ExxonMobil and Chevron describe energy transition ris",
+      "expected": [
+        "CVX",
+        "XOM"
+      ],
+      "retrieved": [
+        "CVX",
+        "CVX",
+        "CVX",
+        "SLB",
+        "CVX"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "How do major retailers describe their e-commerce competitive",
+      "expected": [
+        "COST",
+        "TGT",
+        "WMT"
+      ],
+      "retrieved": [
+        "AMZN",
+        "PEP",
+        "AMZN",
+        "KO",
+        "COST"
+      ],
+      "hit": true,
+      "first_hit_rank": 5
+    },
+    {
+      "query": "How do US wireless carriers describe 5G capital investment r",
+      "expected": [
+        "T",
+        "TMUS",
+        "VZ"
+      ],
+      "retrieved": [
+        "AMT",
+        "T",
+        "T",
+        "AMT",
+        "CMCSA"
+      ],
+      "hit": true,
+      "first_hit_rank": 2
+    },
+    {
+      "query": "How do Home Depot and Lowe's describe housing market sensiti",
+      "expected": [
+        "HD",
+        "LOW"
+      ],
+      "retrieved": [
+        "HD",
+        "SHW",
+        "PLD",
+        "HD",
+        "HD"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "How do industrial gas companies describe hydrogen as a growt",
+      "expected": [
+        "APD",
+        "LIN"
+      ],
+      "retrieved": [
+        "APD",
+        "APD",
+        "APD",
+        "LIN",
+        "LIN"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "Which technology companies cite AI as both an opportunity an",
+      "expected": [
+        "AAPL",
+        "AMZN",
+        "GOOGL",
+        "META",
+        "MSFT",
+        "NVDA"
+      ],
+      "retrieved": [
+        "TMUS",
+        "ADBE",
+        "LLY",
+        "LOW",
+        "LLY"
+      ],
+      "hit": false,
+      "first_hit_rank": null
+    },
+    {
+      "query": "How do major US banks describe interest rate risk to net int",
+      "expected": [
+        "BAC",
+        "JPM",
+        "USB",
+        "WFC"
+      ],
+      "retrieved": [
+        "BA",
+        "AMZN",
+        "KMI",
+        "WMT",
+        "TMO"
+      ],
+      "hit": false,
+      "first_hit_rank": null
+    },
+    {
+      "query": "What climate-related regulatory risks do oil and gas compani",
+      "expected": [
+        "COP",
+        "CVX",
+        "OXY",
+        "XOM"
+      ],
+      "retrieved": [
+        "EOG",
+        "COP",
+        "DE",
+        "KMI",
+        "CVX"
+      ],
+      "hit": true,
+      "first_hit_rank": 2
+    },
+    {
+      "query": "How do defense contractors describe dependence on US governm",
+      "expected": [
+        "BA",
+        "LMT",
+        "RTX"
+      ],
+      "retrieved": [
+        "RTX",
+        "BA",
+        "LMT",
+        "RTX",
+        "RTX"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "Which companies cite exposure to the Chinese consumer market",
+      "expected": [
+        "AAPL",
+        "NKE",
+        "TSLA"
+      ],
+      "retrieved": [
+        "BLK",
+        "NKE",
+        "HON",
+        "NVDA",
+        "JNJ"
+      ],
+      "hit": true,
+      "first_hit_rank": 2
+    },
+    {
+      "query": "What Medicare and Medicaid reimbursement risks do health ins",
+      "expected": [
+        "CVS",
+        "UNH"
+      ],
+      "retrieved": [
+        "UNH",
+        "ABBV",
+        "ORCL",
+        "PFE",
+        "UNH"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "How do utilities describe regulatory approval risk for rate ",
+      "expected": [
+        "AEP",
+        "DUK",
+        "NEE",
+        "SO"
+      ],
+      "retrieved": [
+        "AEP",
+        "UNH",
+        "AEP",
+        "DUK",
+        "KMI"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "Which companies position themselves as beneficiaries of the ",
+      "expected": [
+        "FCX",
+        "LIN",
+        "NEE",
+        "NVDA"
+      ],
+      "retrieved": [
+        "SLB",
+        "MPC",
+        "SLB",
+        "DUK",
+        "PSX"
+      ],
+      "hit": false,
+      "first_hit_rank": null
+    },
+    {
+      "query": "How does Amazon describe AWS revenue growth in its MD&A?",
+      "expected": [
+        "AMZN"
+      ],
+      "retrieved": [
+        "AMZN",
+        "AMZN",
+        "AMZN",
+        "NFLX",
+        "AMZN"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "What risks does Disney cite around its streaming services?",
+      "expected": [
+        "DIS"
+      ],
+      "retrieved": [
+        "DIS",
+        "NFLX",
+        "DIS",
+        "DIS",
+        "NFLX"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "How do hyperscalers describe risks around AI compute infrast",
+      "expected": [
+        "AAPL",
+        "AMZN",
+        "MSFT"
+      ],
+      "retrieved": [
+        "GOOGL",
+        "TSLA",
+        "CVX",
+        "NVDA",
+        "GOOGL"
+      ],
+      "hit": false,
+      "first_hit_rank": null
+    },
+    {
+      "query": "How do Caterpillar and John Deere describe cyclical demand r",
+      "expected": [
+        "CAT",
+        "DE"
+      ],
+      "retrieved": [
+        "CAT",
+        "DE",
+        "CAT",
+        "DE",
+        "CAT"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "What major litigation does Johnson & Johnson disclose?",
+      "expected": [
+        "JNJ"
+      ],
+      "retrieved": [
+        "JNJ",
+        "JNJ",
+        "JNJ",
+        "JNJ",
+        "ORCL"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    },
+    {
+      "query": "How do REITs in different subsectors describe interest rate ",
+      "expected": [
+        "AMT",
+        "EQIX",
+        "PLD",
+        "SPG"
+      ],
+      "retrieved": [
+        "SPG",
+        "PLD",
+        "TGT",
+        "AMT",
+        "VZ"
+      ],
+      "hit": true,
+      "first_hit_rank": 1
+    }
+  ]
+}

@@ -3,7 +3,210 @@
     "query": "What are Apple's main supply chain risks?",
     "expected_tickers": ["AAPL"],
     "expected_items": ["1A"],
-    "expected_keywords": ["supply chain", "manufacturing", "Asia", "concentration"],
-    "gold_answer": "Apple depends on concentrated manufacturing partners in Asia, faces exposure to geopolitical tensions affecting components, and has historically experienced production disruptions from natural disasters and pandemics."
+    "expected_keywords": ["supply chain", "manufacturing", "Asia", "concentration", "suppliers"],
+    "gold_answer": "Apple depends on a concentrated set of component suppliers and manufacturing partners in Asia, exposing it to geopolitical tensions, supply shortages, and historical production disruptions from natural disasters and pandemics."
+  },
+  {
+    "query": "How does NVIDIA describe US export restrictions on its chips to China?",
+    "expected_tickers": ["NVDA"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["export", "China", "BIS", "controls", "data center", "advanced computing"],
+    "gold_answer": "NVIDIA discloses that US Commerce Department export controls restrict sales of its most advanced data center GPUs to China and other affected destinations, materially affecting revenue from those markets and requiring product redesigns to comply."
+  },
+  {
+    "query": "What does Microsoft say about competition in its cloud business?",
+    "expected_tickers": ["MSFT"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["cloud", "Azure", "Amazon", "Google", "competition", "pricing"],
+    "gold_answer": "Microsoft cites intense competition in cloud services from Amazon Web Services and Google Cloud, with pressure on pricing and the need for ongoing investment in capacity, AI capabilities, and global infrastructure to remain competitive."
+  },
+  {
+    "query": "What regulatory consent orders does Wells Fargo disclose?",
+    "expected_tickers": ["WFC"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["consent order", "Federal Reserve", "asset cap", "OCC", "CFPB", "remediation"],
+    "gold_answer": "Wells Fargo discloses multiple outstanding consent orders with the Federal Reserve, OCC, and CFPB, including a Federal Reserve asset cap restricting growth until governance and risk management deficiencies are remediated to regulators' satisfaction."
+  },
+  {
+    "query": "What does Boeing disclose about 737 MAX quality control issues?",
+    "expected_tickers": ["BA"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["737 MAX", "quality", "FAA", "production rate", "supplier"],
+    "gold_answer": "Boeing discloses ongoing quality and production issues in its 737 MAX program, including FAA scrutiny, capped production rates, supplier defects, and the impact on customer deliveries, reputation, and cash flow."
+  },
+  {
+    "query": "What pricing pressures does Pfizer cite in its risk factors?",
+    "expected_tickers": ["PFE"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["pricing", "Inflation Reduction Act", "Medicare", "negotiation", "PBM", "reimbursement"],
+    "gold_answer": "Pfizer cites government and payer pricing pressure including Medicare drug-price negotiation under the Inflation Reduction Act, pricing controls in non-US markets, PBM rebate demands, and broader political scrutiny of US drug pricing."
+  },
+  {
+    "query": "How does Netflix describe its content acquisition strategy?",
+    "expected_tickers": ["NFLX"],
+    "expected_items": ["1"],
+    "expected_keywords": ["content", "original", "licensed", "production", "international", "spend"],
+    "gold_answer": "Netflix describes its strategy as a combination of original productions (which it owns globally) and licensed content, with significant ongoing spend on original programming across genres and languages to grow and retain its global subscriber base."
+  },
+  {
+    "query": "What does Tesla say about its dependence on Elon Musk?",
+    "expected_tickers": ["TSLA"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["Elon Musk", "key person", "CEO", "attention", "other ventures"],
+    "gold_answer": "Tesla discloses a key-person dependence on Elon Musk, noting that his attention is divided across multiple ventures (X, SpaceX, xAI, etc.) and that his unavailability or loss would harm Tesla's business, brand, and operations."
+  },
+  {
+    "query": "How do Google and Meta describe regulatory risk around digital advertising?",
+    "expected_tickers": ["GOOGL", "META"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["antitrust", "privacy", "GDPR", "DMA", "data protection", "advertising"],
+    "gold_answer": "Both Google and Meta cite intensifying antitrust scrutiny (including US DOJ cases and the EU Digital Markets Act) and privacy regulations (GDPR, CCPA, ePrivacy) as material risks to their advertising businesses, with potential limits on data use, targeting, and platform self-preferencing."
+  },
+  {
+    "query": "How do JPMorgan and Goldman Sachs describe trading and market-making risks?",
+    "expected_tickers": ["JPM", "GS"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["trading", "market making", "volatility", "VaR", "liquidity", "counterparty"],
+    "gold_answer": "Both firms cite trading and market-making exposure to volatility, liquidity stress, counterparty default, and regulatory capital requirements, with Goldman emphasizing institutional client franchise dynamics and JPMorgan emphasizing the breadth of its market activities and stress-testing regime."
+  },
+  {
+    "query": "How do major pharmaceutical companies describe patent cliff risk?",
+    "expected_tickers": ["PFE", "MRK", "BMY", "ABBV"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["patent expiration", "loss of exclusivity", "biosimilar", "generic", "revenue", "pipeline"],
+    "gold_answer": "Large pharma companies disclose substantial revenue exposure to loss of exclusivity on flagship products (e.g., Humira biosimilars for AbbVie, Keytruda for Merck), and the need for pipeline innovation, business development, and lifecycle management to offset projected declines."
+  },
+  {
+    "query": "How do ExxonMobil and Chevron describe energy transition risk?",
+    "expected_tickers": ["XOM", "CVX"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["energy transition", "climate", "carbon", "demand destruction", "stranded assets", "policy"],
+    "gold_answer": "Both ExxonMobil and Chevron cite uncertainty around the pace of the energy transition, climate-related regulation and litigation, potential demand reduction for hydrocarbons, and the risk that capital invested in long-lived assets could become stranded if transition accelerates faster than expected."
+  },
+  {
+    "query": "How do major retailers describe their e-commerce competitive positioning?",
+    "expected_tickers": ["WMT", "COST", "TGT"],
+    "expected_items": ["1", "1A"],
+    "expected_keywords": ["e-commerce", "Amazon", "omnichannel", "fulfillment", "online", "competition"],
+    "gold_answer": "Walmart, Costco, and Target describe an omnichannel strategy combining physical stores with e-commerce, ship-from-store, and last-mile delivery, while citing intense competition from Amazon and other online-first retailers as a major ongoing risk and investment driver."
+  },
+  {
+    "query": "How do US wireless carriers describe 5G capital investment risk?",
+    "expected_tickers": ["VZ", "T", "TMUS"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["5G", "spectrum", "capital expenditure", "C-band", "deployment", "return on investment"],
+    "gold_answer": "Verizon, AT&T, and T-Mobile cite the substantial capital outlay for spectrum (especially C-band) and network deployment, with uncertainty about whether 5G monetization (consumer ARPU, fixed wireless access, enterprise 5G) will deliver returns commensurate with the investment."
+  },
+  {
+    "query": "How do Home Depot and Lowe's describe housing market sensitivity?",
+    "expected_tickers": ["HD", "LOW"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["housing", "interest rates", "home prices", "turnover", "discretionary", "DIY"],
+    "gold_answer": "Both Home Depot and Lowe's cite sensitivity to housing market conditions including home-price appreciation, mortgage rates, existing-home turnover, and consumer discretionary spending on home improvement, with rising rates a particular headwind to large-ticket and Pro categories."
+  },
+  {
+    "query": "How do industrial gas companies describe hydrogen as a growth opportunity?",
+    "expected_tickers": ["LIN", "APD"],
+    "expected_items": ["1"],
+    "expected_keywords": ["hydrogen", "clean energy", "blue", "green", "carbon capture", "energy transition"],
+    "gold_answer": "Linde and Air Products position hydrogen — particularly blue (with carbon capture) and green (electrolytic) variants — as a major decarbonization-driven growth opportunity, with significant project pipelines underway, often anchored by long-term offtake contracts and government incentives like the US Inflation Reduction Act."
+  },
+  {
+    "query": "Which technology companies cite AI as both an opportunity and a regulatory risk?",
+    "expected_tickers": ["AAPL", "MSFT", "GOOGL", "META", "AMZN", "NVDA"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["artificial intelligence", "AI", "generative", "regulation", "EU AI Act", "model"],
+    "gold_answer": "Major tech companies including Microsoft, Google, Meta, Amazon, NVIDIA, and Apple describe AI as a significant strategic opportunity while also flagging risks from emerging regulation (EU AI Act, US executive orders), litigation around training data, reputational harm from model errors, and competitive pressure on capital allocation."
+  },
+  {
+    "query": "How do major US banks describe interest rate risk to net interest income?",
+    "expected_tickers": ["JPM", "BAC", "WFC", "USB"],
+    "expected_items": ["1A", "7A"],
+    "expected_keywords": ["interest rate", "net interest income", "NII", "deposit beta", "yield curve", "asset sensitivity"],
+    "gold_answer": "Major US banks disclose net interest income sensitivity to changes in interest rates, with most reporting asset-sensitive balance sheets that benefit from higher rates up to a point but face pressure from deposit beta increases, yield-curve shape, and competition for deposits as rates rise or fall."
+  },
+  {
+    "query": "What climate-related regulatory risks do oil and gas companies disclose?",
+    "expected_tickers": ["XOM", "CVX", "COP", "OXY"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["climate", "emissions", "SEC", "methane", "carbon price", "litigation"],
+    "gold_answer": "Oil and gas companies disclose risks from evolving climate disclosure rules (including SEC climate disclosure), methane regulations, potential carbon pricing, increasing climate-related litigation, and pressure from shareholders and activist investors to accelerate emissions reduction."
+  },
+  {
+    "query": "How do defense contractors describe dependence on US government spending?",
+    "expected_tickers": ["BA", "RTX", "LMT"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["government", "Department of Defense", "budget", "appropriations", "contract", "continuing resolution"],
+    "gold_answer": "Defense contractors disclose substantial revenue concentration with the US Department of Defense and other government customers, with risks from budget cycles, continuing resolutions, contract cancellations, sequestration, shifting national security priorities, and procurement reforms."
+  },
+  {
+    "query": "Which companies cite exposure to the Chinese consumer market as a risk?",
+    "expected_tickers": ["AAPL", "NKE", "TSLA"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["China", "consumer", "demand", "competition", "geopolitical", "macroeconomic"],
+    "gold_answer": "Apple, Nike, and Tesla all cite material exposure to the Chinese consumer market and disclose risks from local competition, macroeconomic weakness, consumer-sentiment shifts, US-China trade tensions, and regulatory or political actions that could affect demand or operations in the region."
+  },
+  {
+    "query": "What Medicare and Medicaid reimbursement risks do health insurers disclose?",
+    "expected_tickers": ["UNH", "CVS"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["Medicare Advantage", "Medicaid", "CMS", "reimbursement", "star ratings", "rate notice"],
+    "gold_answer": "UnitedHealth and CVS (Aetna) disclose risks tied to CMS Medicare Advantage rate setting, Star Ratings (which affect bonus payments), Medicaid redeterminations, and the broader pressure of medical cost trend versus pricing — a small adverse change in any of these can materially affect earnings."
+  },
+  {
+    "query": "How do utilities describe regulatory approval risk for rate increases?",
+    "expected_tickers": ["NEE", "SO", "DUK", "AEP"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["rate case", "public utility commission", "PUC", "authorized return", "recovery", "regulatory lag"],
+    "gold_answer": "Major utilities describe risks from state public utility commission rate-case proceedings, including the possibility that authorized returns on equity, recoverable capital expenditure, or fuel cost recovery may be reduced or delayed (regulatory lag), affecting earnings and cash flow."
+  },
+  {
+    "query": "Which companies position themselves as beneficiaries of the energy transition?",
+    "expected_tickers": ["NEE", "FCX", "NVDA", "LIN"],
+    "expected_items": ["1", "1A"],
+    "expected_keywords": ["energy transition", "electrification", "renewable", "copper", "data center", "decarbonization"],
+    "gold_answer": "NextEra positions itself as a leading renewable energy developer; Freeport-McMoRan cites long-term copper demand from electrification; NVIDIA frames AI compute as enabling efficiency and clean-energy applications; and Linde flags hydrogen and carbon-capture as growth drivers — each tying its business to decarbonization themes."
+  },
+  {
+    "query": "How does Amazon describe AWS revenue growth in its MD&A?",
+    "expected_tickers": ["AMZN"],
+    "expected_items": ["7"],
+    "expected_keywords": ["AWS", "Amazon Web Services", "revenue growth", "operating income", "segment"],
+    "gold_answer": "Amazon's MD&A describes AWS as a large and growing segment with strong operating income contribution, attributing growth to broad-based customer demand, generative AI workloads, and continued investment in infrastructure capacity, while noting some near-term pressure from customer cost-optimization."
+  },
+  {
+    "query": "What risks does Disney cite around its streaming services?",
+    "expected_tickers": ["DIS"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["Disney+", "streaming", "subscriber", "content costs", "linear TV", "profitability"],
+    "gold_answer": "Disney cites risks for Disney+ and Hulu including subscriber acquisition and retention pressure, intense streaming competition, high content costs, ongoing losses or thin margins in the Direct-to-Consumer segment, and the decline of higher-margin linear TV that historically funded content investment."
+  },
+  {
+    "query": "How do hyperscalers describe risks around AI compute infrastructure investments?",
+    "expected_tickers": ["AAPL", "MSFT", "AMZN"],
+    "expected_items": ["1A", "7"],
+    "expected_keywords": ["capital expenditure", "data center", "AI infrastructure", "GPU", "depreciation", "demand"],
+    "gold_answer": "Hyperscalers including Microsoft and Amazon disclose substantial AI-related capital expenditure on data centers and accelerator hardware, with risks that demand may not materialize as expected, depreciation expense could pressure margins, and lead times or supply constraints (especially for advanced GPUs) could affect deployment."
+  },
+  {
+    "query": "How do Caterpillar and John Deere describe cyclical demand risk?",
+    "expected_tickers": ["CAT", "DE"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["cyclical", "construction", "agriculture", "commodity prices", "dealer inventory", "end markets"],
+    "gold_answer": "Caterpillar and Deere disclose exposure to cyclical end markets — construction, mining, energy, and agriculture — with demand driven by commodity prices, farm income, infrastructure spending, and global GDP, all of which can swing sharply and lead to dealer inventory adjustments that amplify revenue volatility."
+  },
+  {
+    "query": "What major litigation does Johnson & Johnson disclose?",
+    "expected_tickers": ["JNJ"],
+    "expected_items": ["3", "1A"],
+    "expected_keywords": ["talc", "ovarian cancer", "opioid", "settlement", "bankruptcy", "litigation"],
+    "gold_answer": "Johnson & Johnson discloses extensive litigation including thousands of talc-related lawsuits alleging links to ovarian cancer and mesothelioma (with attempted bankruptcy-based resolution structures), as well as opioid-related multistate settlements, with material reserves and ongoing legal expense."
+  },
+  {
+    "query": "How do REITs in different subsectors describe interest rate sensitivity?",
+    "expected_tickers": ["PLD", "AMT", "SPG", "EQIX"],
+    "expected_items": ["1A", "7A"],
+    "expected_keywords": ["interest rate", "cost of capital", "cap rate", "refinancing", "floating rate", "valuation"],
+    "gold_answer": "Prologis (industrial), American Tower (cell towers), Simon Property (malls), and Equinix (data centers) all disclose interest-rate sensitivity affecting cost of debt, refinancing risk on substantial maturity towers, property valuations via cap rates, and — for tower and data-center REITs in particular — comparison against fixed-income alternatives for investor capital allocation."
   }
 ]

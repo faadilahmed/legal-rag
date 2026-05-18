@@ -53,18 +53,27 @@ hand-labeled query set → Recall@5, MRR (retrieval)
 
 ## Results
 
-Initial smoke-test query ("What are Apple's main supply chain risks?") against the seed eval set:
+Measured on 30 eval queries spanning 11 factual, 7 comparative, and 12 multi-company aggregation queries across all 10 sectors (50 unique tickers referenced):
 
-| Metric | Score |
-|---|---|
-| Retrieval Recall@5 | 1.0 |
-| Retrieval MRR | 0.5 |
-| Rerank top result | `AAPL_1A_35` (score 3.93) |
-| RAGAS faithfulness | _pending OpenAI judge wiring_ |
-| RAGAS answer_relevancy | _pending OpenAI judge wiring_ |
-| RAGAS context_precision | _pending OpenAI judge wiring_ |
+| Metric | Score | Notes |
+|---|---|---|
+| Retrieval Recall@5 | **0.833** | 25 of 30 queries have an expected ticker in the top-5 raw hybrid retrieval |
+| Retrieval MRR | **0.723** | Average first-relevant-rank ≈ 1.4 |
+| RAGAS faithfulness | _pending OpenAI judge wiring_ | |
+| RAGAS answer_relevancy | _pending OpenAI judge wiring_ | |
+| RAGAS context_precision | _pending OpenAI judge wiring_ | |
 
-*The full eval requires 30 hand-labeled queries (per `data/eval/HOW_TO_LABEL.md`). The numbers above reflect the single seed example. The fact that MRR jumps from 0.5 (raw retrieval, rank 2) to top-of-list after reranking is the design working — cross-encoder reranking exists exactly to do this kind of last-mile precision lift.*
+**Eval-set provenance (honesty matters):** The 30 queries were drafted by Claude (this project's own LLM), grounded in publicly known disclosures these companies routinely make in their 10-Ks. They were validated by running them against the index and inspecting hits/misses. A truly independent eval would have a human author with no exposure to the retrieval implementation write the questions. The current set is a starting point — see `data/eval/HOW_TO_LABEL.md` for the rubric to extend or replace it.
+
+**Diagnostic from the 5 misses (full per-query trace in `data/eval/eval_results.json`):**
+
+1. *"How do major US banks describe interest rate risk to net interest income?"* — retrieved `[BA, AMZN, KMI, WMT, TMO]`, no banks. A real failure: BM25 likely surfaced "BA" (Boeing) on the bigram "interest rate" + "Income" frequency, ahead of the bank filings that use phrasing like "NII sensitivity" or "asset/liability mismatch."
+2. *"Which technology companies cite AI as both an opportunity and a regulatory risk?"* — the "both X and Y" phrasing is hard for sparse retrieval; needs query decomposition.
+3. *"How do hyperscalers describe risks around AI compute infrastructure investments?"* — partial label gap (the retrieved `GOOGL` and `NVDA` chunks are arguably correct; my `expected_tickers` list omitted GOOGL).
+4. *"What does Microsoft say about competition in its cloud business?"* — surfaced `ORCL` (which does have a cloud business) instead of MSFT; the embedder may be picking up "cloud competition" semantics from Oracle's framing more strongly than from Microsoft's. Could be helped by metadata-level ticker filtering for company-specific queries.
+5. *"Which companies position themselves as beneficiaries of the energy transition?"* — vague, sector-spanning. Retrieved energy services companies (SLB, MPC) which are reasonable but not in the expected set.
+
+The Recall@5 = 0.833 / MRR = 0.723 numbers are honest reflections of pre-rerank retrieval quality. The cross-encoder rerank step (verified on the seed query) further sorts within the top-50 but doesn't change Recall@5 since it operates on the retriever's candidate set.
 
 ## PySpark scale-up
 

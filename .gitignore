@@ -19,7 +19,7 @@ data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
-data/eval/eval_results.json
+# eval_results.json is tracked — it's the highest-signal portfolio artifact.
 
 # Secrets
 .env
