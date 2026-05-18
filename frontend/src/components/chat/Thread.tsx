@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { Bot, Loader2 } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -23,6 +23,7 @@ import {
 } from "@/components/chat/CitationContext"
 import { SourcesPanel } from "@/components/chat/SourcesPanel"
 import { StatusStepper, type StatusData } from "@/components/chat/StatusStepper"
+import { TraceButton } from "@/components/chat/TraceButton"
 import type { SourcesData } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -183,6 +184,33 @@ const ErrorDataPart: DataMessagePartComponent<ErrorData> = ({
   )
 }
 
+// ---------------------------------------------------------------------------
+// Per-message context: carry the DB message id from the metadata data part
+// up to TraceButton without prop-drilling through MessagePrimitive.
+// ---------------------------------------------------------------------------
+
+const AssistantMessageContext = React.createContext<{
+  messageId: string | null
+  setMessageId: (id: string) => void
+} | null>(null)
+
+interface MetadataData {
+  db_message_id?: string
+}
+
+const MetadataDataPart: DataMessagePartComponent<MetadataData> = ({
+  data,
+}: DataMessagePartProps<MetadataData>) => {
+  const ctx = React.useContext(AssistantMessageContext)
+  useEffect(() => {
+    if (data?.db_message_id && ctx) {
+      ctx.setMessageId(data.db_message_id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.db_message_id])
+  return null
+}
+
 function UserMessage() {
   return (
     <MessagePrimitive.Root className="my-4 flex justify-end">
@@ -194,30 +222,38 @@ function UserMessage() {
 }
 
 function AssistantMessage() {
+  const [messageId, setMessageId] = useState<string | null>(null)
+  const ctx = useMemo(() => ({ messageId, setMessageId }), [messageId])
   return (
-    <CitationProvider>
-      <MessagePrimitive.Root className="my-6 flex gap-3">
-        <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-1 ring-inset ring-primary/20">
-          <Bot className="h-4 w-4 text-primary" />
-        </div>
-        <div className="min-w-0 flex-1 text-sm text-foreground">
-          <MessagePrimitive.Content
-            components={{
-              Text: MarkdownText,
-              Empty: ThinkingIndicator,
-              data: {
-                by_name: {
-                  status: StatusDataPart as DataMessagePartComponent,
-                  sources: SourcesDataPart as DataMessagePartComponent,
-                  followups: FollowupsDataPart as DataMessagePartComponent,
-                  error: ErrorDataPart as DataMessagePartComponent,
+    <AssistantMessageContext.Provider value={ctx}>
+      <CitationProvider>
+        <MessagePrimitive.Root className="my-6 flex gap-3">
+          <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-1 ring-inset ring-primary/20">
+            <Bot className="h-4 w-4 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1 text-sm text-foreground">
+            <div className="flex items-center justify-end gap-1 -mt-1">
+              <TraceButton messageId={messageId} />
+            </div>
+            <MessagePrimitive.Content
+              components={{
+                Text: MarkdownText,
+                Empty: ThinkingIndicator,
+                data: {
+                  by_name: {
+                    status: StatusDataPart as DataMessagePartComponent,
+                    sources: SourcesDataPart as DataMessagePartComponent,
+                    followups: FollowupsDataPart as DataMessagePartComponent,
+                    error: ErrorDataPart as DataMessagePartComponent,
+                    metadata: MetadataDataPart as DataMessagePartComponent,
+                  },
                 },
-              },
-            }}
-          />
-        </div>
-      </MessagePrimitive.Root>
-    </CitationProvider>
+              }}
+            />
+          </div>
+        </MessagePrimitive.Root>
+      </CitationProvider>
+    </AssistantMessageContext.Provider>
   )
 }
 

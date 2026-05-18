@@ -14,6 +14,7 @@ import { parseStream } from "@/lib/sse"
 import type { Thread } from "@/lib/types"
 import type { SourcesData } from "@/lib/types"
 import { useScope } from "@/runtime/ScopeContext"
+import { ChatThreadProvider } from "@/runtime/ChatThreadContext"
 
 /**
  * Convert a DB message row to the ThreadMessageLike shape that
@@ -244,7 +245,9 @@ export function RuntimeMount({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      {children}
+      <ChatThreadProvider activeThreadId={activeThreadId}>
+        {children}
+      </ChatThreadProvider>
     </AssistantRuntimeProvider>
   )
 }
