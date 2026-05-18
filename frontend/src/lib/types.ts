@@ -9,6 +9,7 @@ export interface Thread {
 export interface SourceChunk {
   chunk_id: string
   ticker: string
+  year?: number | null
   item: string
   section_title: string
   rerank_score: number

@@ -181,6 +181,24 @@ def _resolve_ticker(filing_path: Path) -> str:
     return "UNKNOWN"
 
 
+# Accession-number format: 'cccccccccc-yy-nnnnnn' (CIK-yearFiled-seq).
+# Middle 2 digits are the year the filing was submitted to EDGAR. We expand
+# to a 4-digit year using the standard SEC convention (≥70 → 19yy else 20yy).
+_ACCESSION_RE = re.compile(r"^(\d{10})-(\d{2})-(\d{6})$")
+
+
+def _resolve_year(filing_path: Path) -> int:
+    """Extract the filing year from the accession-numbered directory in the path.
+
+    Returns 0 if not parseable (caller can treat as 'unknown')."""
+    for part in filing_path.parts:
+        m = _ACCESSION_RE.match(part)
+        if m:
+            yy = int(m.group(2))
+            return 1900 + yy if yy >= 70 else 2000 + yy
+    return 0
+
+
 def preprocess_filing(filing_path: Path) -> dict:
     """Process one 10-K file end-to-end."""
     submission = filing_path.read_text(encoding="utf-8", errors="ignore")
@@ -190,6 +208,7 @@ def preprocess_filing(filing_path: Path) -> dict:
 
     return {
         "ticker": _resolve_ticker(filing_path),
+        "year": _resolve_year(filing_path),
         "filing_path": str(filing_path),
         "char_count": len(text),
         "section_count": len(sections),

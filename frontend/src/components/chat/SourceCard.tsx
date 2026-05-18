@@ -14,7 +14,8 @@ export function SourceCard({ chunk, onOpen }: SourceCardProps) {
     >
       <div className="flex items-baseline justify-between gap-2">
         <p className="font-mono text-xs font-medium">
-          {chunk.ticker} · Item {chunk.item}
+          {chunk.ticker}
+          {chunk.year ? ` · FY${chunk.year}` : ""} · Item {chunk.item}
         </p>
         <p className="font-mono text-[10px] text-muted-foreground">
           score {chunk.rerank_score.toFixed(2)}

@@ -102,10 +102,12 @@ Then run the two-terminal dev setup above. The full web app — chat with citati
 
 ## Corpus snapshot
 
-- **Filings:** 78 most-recent 10-Ks pulled from SEC EDGAR, spanning 10 sectors (Tech, Finance, Healthcare, Energy, Consumer, Industrial, Telecom/Media, Real Estate, Utilities, Materials)
-- **Chunks:** 24,290 total (avg ~580 chars/chunk after recursive splitting)
-- **Index size:** ~37 MB FAISS + ~16 MB BM25 + ~37 MB embeddings + ~15 MB chunk metadata
-- **Known gaps:** 2 single-letter tickers (C, MS) had section-detection failures and were skipped — see `docs/specs/2026-05-17-sec-10k-qa-design.md` for diagnosis. The remaining 76 tickers (~22.8k chunks) cover the eval-target sectors.
+- **Filings:** 387 10-K annual reports pulled from SEC EDGAR (~5 most-recent years per ticker, fewer for younger filers), spanning 78 tickers across 10 sectors (Tech, Finance, Healthcare, Energy, Consumer, Industrial, Telecom/Media, Real Estate, Utilities, Materials)
+- **Filing years:** 2021–2026 (with FY2022–FY2025 having full 77-78 ticker coverage; FY2026 partial because some companies haven't filed yet)
+- **Chunks:** 116,639 total (avg ~550 chars/chunk after recursive splitting); chunk IDs encode lineage as `TICKER_YEAR_ITEM_N` (e.g. `AAPL_2025_1A_35`) so multi-year filings stay distinguishable
+- **Index size:** ~170 MB FAISS + ~75 MB BM25 + ~170 MB embeddings + ~70 MB chunk metadata = ~480 MB total
+- **Build time:** ~10 min ingest + ~5 min preprocess/chunk/embed on Apple Silicon CPU
+- **Known gaps:** 2 tickers (C, MS) consistently fail section detection across all 5 years — their 10-K SGML structure doesn't match our `Item X` regex. The remaining 76 tickers' filings make up the indexed 116,639 chunks. See `docs/specs/2026-05-17-sec-10k-qa-design.md` for the section-detection diagnosis.
 
 ## Results
 

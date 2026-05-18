@@ -19,11 +19,22 @@ def parse_user_agent(user_agent: str) -> tuple[str, str]:
     return name, email
 
 
-def ingest_filings(tickers: list[str] = TICKERS) -> dict[str, str]:
-    """Download the most recent 10-K per ticker. Returns {ticker: 'ok' | error_msg}.
+# How many most-recent 10-Ks to pull per ticker. 5 years gives enough
+# temporal coverage for evolution queries ("how has Apple's China-risk
+# language changed?") without an unreasonable download / build cost.
+FILINGS_PER_TICKER = 5
+
+
+def ingest_filings(
+    tickers: list[str] = TICKERS,
+    limit: int = FILINGS_PER_TICKER,
+) -> dict[str, str]:
+    """Download the most recent `limit` 10-Ks per ticker. Returns {ticker: 'ok' | error_msg}.
 
     sec-edgar-downloader handles rate-limiting (10 req/s ceiling) automatically.
     Filings land under RAW_DIR/<ticker>/10-K/<accession>/full-submission.txt.
+    If a ticker has fewer than `limit` historical 10-Ks (e.g., newer IPO),
+    EDGAR returns whatever is available — no error.
     """
     name, email = parse_user_agent(SEC_USER_AGENT)
     dl = Downloader(name, email, str(RAW_DIR))
@@ -31,7 +42,7 @@ def ingest_filings(tickers: list[str] = TICKERS) -> dict[str, str]:
     results: dict[str, str] = {}
     for ticker in tickers:
         try:
-            dl.get("10-K", ticker, limit=1)
+            dl.get("10-K", ticker, limit=limit)
             results[ticker] = "ok"
             print(f"✓ {ticker}")
         except Exception as e:

@@ -26,19 +26,37 @@ def _corpus_meta(pipeline) -> str:
     chunks = pipeline.index.chunks
     tickers = sorted({c["ticker"] for c in chunks})
     items = sorted({c["item"] for c in chunks})
+    years = sorted({c.get("year") for c in chunks if c.get("year")})
+    # Count distinct (ticker, year) pairs to give an accurate filing count
+    # for multi-year corpora. Falls back to ticker count if year is missing.
+    filings = (
+        len({(c["ticker"], c.get("year")) for c in chunks})
+        if years
+        else len(tickers)
+    )
+    year_line = (
+        f"\n- Filing years covered: {min(years)}–{max(years)} "
+        f"({len(years)} distinct years; ~{filings / max(len(tickers), 1):.1f} "
+        f"filings per ticker on average)."
+        if years
+        else ""
+    )
     note = (
         "Knowledge-base metadata (use to answer meta-questions about the "
         "corpus itself — what filings you have access to, how many companies, "
         "what sections exist; do NOT use to invent factual content about "
         "specific companies — that still must come from the retrieved chunks):"
-        f"\n- {len(chunks):,} chunks across {len(tickers)} companies' most "
-        "recent 10-K (annual report) filings, sourced from SEC EDGAR."
+        f"\n- {len(chunks):,} chunks across {filings} 10-K (annual report) "
+        f"filings from {len(tickers)} companies, sourced from SEC EDGAR."
+        f"{year_line}"
         "\n- 10 sectors covered: Tech, Finance, Healthcare, Energy, Consumer, "
         "Industrial, Telecom/Media, Real Estate, Utilities, Materials."
         f"\n- Tickers indexed ({len(tickers)} total): "
         f"{', '.join(tickers)}."
         f"\n- 10-K Items represented across the corpus: {', '.join(items)}."
         "\n- Each user query retrieves the 5 most relevant chunks from this corpus."
+        "\n- Chunk IDs encode lineage: format is `TICKER_YEAR_ITEM_N` when year is "
+        "known (e.g. `AAPL_2025_1A_35`), or `TICKER_ITEM_N` for single-year corpora."
     )
     _CORPUS_META_CACHE[key] = note
     return note
@@ -50,6 +68,7 @@ def _chunk_to_source(c: dict) -> dict:
     return {
         "chunk_id": c["chunk_id"],
         "ticker": c["ticker"],
+        "year": int(c["year"]) if c.get("year") else None,
         "item": c["item"],
         "section_title": c.get("section_title", ""),
         "rerank_score": float(c.get("rerank_score", 0.0)),
