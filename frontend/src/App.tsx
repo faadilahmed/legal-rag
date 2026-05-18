@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
 
+import { AppShell } from "@/components/layout/AppShell"
+
 interface Health {
   status: string
   chunks_loaded: number
@@ -21,25 +23,30 @@ export default function App() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <h1 className="text-3xl font-semibold tracking-tight">SEC 10-K Q&A</h1>
-      <p className="text-muted-foreground mt-2">Frontend scaffold ready.</p>
-      <div className="mt-6 p-4 rounded-lg border border-border bg-card">
-        <h2 className="text-lg font-medium">Backend health</h2>
-        {health && (
-          <pre className="mt-2 text-sm text-muted-foreground">
-            {JSON.stringify(health, null, 2)}
-          </pre>
-        )}
-        {error && (
-          <p className="mt-2 text-sm text-destructive">
-            Error: {error} (is the backend running on :8000?)
-          </p>
-        )}
-        {!health && !error && (
-          <p className="mt-2 text-sm text-muted-foreground">Loading…</p>
-        )}
+    <AppShell>
+      <div className="mx-auto max-w-3xl p-8">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Main pane (chat lands here)
+        </h2>
+        <p className="mt-2 text-muted-foreground">
+          Phase C3 will mount the assistant-ui Thread component here. For now,
+          this confirms the layout shell + theme toggle + sidebar tabs render.
+        </p>
+        <div className="mt-6 rounded-lg border border-border bg-card p-4">
+          <h3 className="text-sm font-medium">Backend health</h3>
+          {health && (
+            <pre className="mt-2 text-xs text-muted-foreground">
+              {JSON.stringify(health, null, 2)}
+            </pre>
+          )}
+          {error && (
+            <p className="mt-2 text-sm text-destructive">Error: {error}</p>
+          )}
+          {!health && !error && (
+            <p className="mt-2 text-sm text-muted-foreground">Loading…</p>
+          )}
+        </div>
       </div>
-    </div>
+    </AppShell>
   )
 }
