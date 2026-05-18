@@ -6,7 +6,7 @@ import type { CorpusTicker } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { useScope } from "@/runtime/ScopeContext"
 
-import { ItemNode } from "./ItemNode"
+import { YearNode } from "./YearNode"
 
 interface TickerNodeProps {
   ticker: CorpusTicker
@@ -15,8 +15,8 @@ interface TickerNodeProps {
 
 export function TickerNode({ ticker, onOpenChunk }: TickerNodeProps) {
   const [open, setOpen] = useState(false)
-  const { isActive, toggle } = useScope()
-  const active = isActive(ticker.ticker)
+  const { isTickerActive, toggleTicker } = useScope()
+  const active = isTickerActive(ticker.ticker)
 
   return (
     <div>
@@ -28,7 +28,7 @@ export function TickerNode({ ticker, onOpenChunk }: TickerNodeProps) {
       >
         <Checkbox
           checked={active}
-          onCheckedChange={() => toggle(ticker.ticker)}
+          onCheckedChange={() => toggleTicker(ticker.ticker)}
           aria-label={`Scope to ${ticker.ticker}`}
           className="h-3 w-3"
           onClick={(e) => e.stopPropagation()}
@@ -46,17 +46,17 @@ export function TickerNode({ ticker, onOpenChunk }: TickerNodeProps) {
           />
           <span className="font-mono font-medium">{ticker.ticker}</span>
           <span className="ml-auto text-[10px] text-muted-foreground">
-            {ticker.chunk_count}
+            {ticker.chunk_count.toLocaleString()}
           </span>
         </button>
       </div>
       {open && (
         <div className="ml-4 mt-1 space-y-0.5 border-l border-border pl-2">
-          {ticker.items.map((i) => (
-            <ItemNode
-              key={i.item}
+          {ticker.years.map((y) => (
+            <YearNode
+              key={`${ticker.ticker}-${y.year ?? "any"}`}
               ticker={ticker.ticker}
-              item={i}
+              year={y}
               onOpenChunk={onOpenChunk}
             />
           ))}

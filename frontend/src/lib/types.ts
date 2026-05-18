@@ -35,10 +35,16 @@ export interface CorpusItem {
   chunk_count: number
 }
 
+export interface CorpusYear {
+  year: number | null
+  chunk_count: number
+  items: CorpusItem[]
+}
+
 export interface CorpusTicker {
   ticker: string
   chunk_count: number
-  items: CorpusItem[]
+  years: CorpusYear[]
 }
 
 export interface CorpusSector {
@@ -55,6 +61,7 @@ export interface CorpusTree {
 export interface ChunkPreview {
   chunk_id: string
   ticker: string
+  year?: number | null
   item: string
   section_title: string
   char_count: number

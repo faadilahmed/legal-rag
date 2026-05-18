@@ -24,17 +24,20 @@ def list_chunks(
     request: Request,
     ticker: str | None = Query(default=None),
     item: str | None = Query(default=None),
+    year: int | None = Query(default=None),
     limit: int = Query(default=200, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
     pipeline=Depends(get_pipeline),
 ) -> ChunkPreviewList:
-    """Filtered chunk list with 300-char previews. ticker+item recommended."""
+    """Filtered chunk list with 300-char previews. ticker+item+year recommended."""
     chunks = pipeline.index.chunks
     filtered = []
     for c in chunks:
         if ticker and c["ticker"] != ticker:
             continue
         if item and c["item"] != item:
+            continue
+        if year and c.get("year") != year:
             continue
         filtered.append(c)
     total = len(filtered)
@@ -43,6 +46,7 @@ def list_chunks(
         ChunkPreview(
             chunk_id=c["chunk_id"],
             ticker=c["ticker"],
+            year=c.get("year") or None,
             item=c["item"],
             section_title=c.get("section_title", ""),
             char_count=c.get("char_count", len(c["text"])),
@@ -65,6 +69,7 @@ def get_chunk(
     return ChunkFull(
         chunk_id=c["chunk_id"],
         ticker=c["ticker"],
+        year=c.get("year") or None,
         item=c["item"],
         section_title=c.get("section_title", ""),
         text=c["text"],

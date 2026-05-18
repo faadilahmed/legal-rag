@@ -11,10 +11,12 @@ import { ChunkRow } from "./ChunkRow"
 interface ItemNodeProps {
   ticker: string
   item: CorpusItem
+  /** When set, scopes the chunk lookup to that filing year. null/undefined → all years. */
+  year: number | null | undefined
   onOpenChunk: (chunkId: string) => void
 }
 
-export function ItemNode({ ticker, item, onOpenChunk }: ItemNodeProps) {
+export function ItemNode({ ticker, item, year, onOpenChunk }: ItemNodeProps) {
   const [open, setOpen] = useState(false)
   const [chunks, setChunks] = useState<ChunkPreview[] | null>(null)
   const [loading, setLoading] = useState(false)
@@ -24,7 +26,7 @@ export function ItemNode({ ticker, item, onOpenChunk }: ItemNodeProps) {
     let cancelled = false
     setLoading(true)
     api
-      .listChunks(ticker, item.item, 50)
+      .listChunks(ticker, item.item, year ?? null, 50)
       .then((r) => {
         if (!cancelled) setChunks(r.items)
       })
@@ -34,7 +36,7 @@ export function ItemNode({ ticker, item, onOpenChunk }: ItemNodeProps) {
     return () => {
       cancelled = true
     }
-  }, [open, chunks, ticker, item.item])
+  }, [open, chunks, ticker, item.item, year])
 
   return (
     <div>

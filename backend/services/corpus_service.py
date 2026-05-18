@@ -39,23 +39,36 @@ SECTOR_ORDER = [
 
 
 def build_corpus_tree(chunks: list[dict]) -> dict:
-    """Build the sector → ticker → items tree from a chunk list.
+    """Build the sector → ticker → years → items tree from a chunk list.
+
+    For a multi-year corpus we need the year level so users can browse
+    "AAPL > FY2025 > Item 1A (132)" instead of "AAPL > Item 1A (653)"
+    where 653 silently sums across 5 years of filings.
+
+    When all chunks have year=0/missing (legacy single-year corpus), the
+    `years` array on each ticker contains a single entry with year=null
+    and the UI can collapse that level naturally.
 
     Returns:
         {
           "sectors": [
-            {"name": "Tech", "ticker_count": 10, "chunk_count": 3756, "tickers": [
-              {"ticker": "AAPL", "chunk_count": 357, "items": [
-                {"item": "1A", "chunk_count": 88}, ...
+            {"name": "Tech", "ticker_count": 10, "chunk_count": 16945, "tickers": [
+              {"ticker": "AAPL", "chunk_count": 1841, "years": [
+                {"year": 2025, "chunk_count": 388, "items": [
+                  {"item": "1A", "chunk_count": 132}, ...
+                ]}, ...
               ]}, ...
             ]}, ...
           ]
         }
     """
-    # chunks_by_ticker_item[ticker][item] = count
-    by_ticker: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    # by_ticker[ticker][year][item] = count
+    by_ticker: dict[str, dict[int | None, dict[str, int]]] = defaultdict(
+        lambda: defaultdict(lambda: defaultdict(int))
+    )
     for c in chunks:
-        by_ticker[c["ticker"]][c["item"]] += 1
+        year = c.get("year") or None
+        by_ticker[c["ticker"]][year][c["item"]] += 1
 
     # Group tickers by sector
     sector_to_tickers: dict[str, list[str]] = defaultdict(list)
@@ -71,18 +84,33 @@ def build_corpus_tree(chunks: list[dict]) -> dict:
         tickers_out = []
         sector_chunk_count = 0
         for ticker in tickers_sorted:
-            items_dict = by_ticker[ticker]
-            items_sorted = sorted(items_dict.keys(), key=_item_sort_key)
-            items_out = [
-                {"item": item, "chunk_count": items_dict[item]}
-                for item in items_sorted
-            ]
-            ticker_chunks = sum(items_dict.values())
+            years_dict = by_ticker[ticker]
+            # Years sorted newest-first so the most recent filing year is on top
+            years_sorted = sorted(
+                years_dict.keys(),
+                key=lambda y: (y is None, -(y or 0)),
+            )
+            years_out = []
+            ticker_chunks = 0
+            for year in years_sorted:
+                items_dict = years_dict[year]
+                items_sorted = sorted(items_dict.keys(), key=_item_sort_key)
+                items_out = [
+                    {"item": item, "chunk_count": items_dict[item]}
+                    for item in items_sorted
+                ]
+                year_chunks = sum(items_dict.values())
+                ticker_chunks += year_chunks
+                years_out.append({
+                    "year": year,  # int or null
+                    "chunk_count": year_chunks,
+                    "items": items_out,
+                })
             sector_chunk_count += ticker_chunks
             tickers_out.append({
                 "ticker": ticker,
                 "chunk_count": ticker_chunks,
-                "items": items_out,
+                "years": years_out,
             })
         sectors_out.append({
             "name": sector,

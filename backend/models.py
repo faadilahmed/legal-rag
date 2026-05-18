@@ -54,10 +54,16 @@ class ItemSummary(BaseModel):
     chunk_count: int
 
 
+class YearSummary(BaseModel):
+    year: int | None  # null for legacy single-year corpora without year metadata
+    chunk_count: int
+    items: list[ItemSummary]
+
+
 class TickerSummary(BaseModel):
     ticker: str
     chunk_count: int
-    items: list[ItemSummary]
+    years: list[YearSummary]
 
 
 class SectorSummary(BaseModel):
@@ -74,6 +80,7 @@ class CorpusResponse(BaseModel):
 class ChunkPreview(BaseModel):
     chunk_id: str
     ticker: str
+    year: int | None = None
     item: str
     section_title: str
     char_count: int
@@ -88,6 +95,7 @@ class ChunkPreviewList(BaseModel):
 class ChunkFull(BaseModel):
     chunk_id: str
     ticker: str
+    year: int | None = None
     item: str
     section_title: str
     text: str

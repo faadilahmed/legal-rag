@@ -41,9 +41,13 @@ async def test_corpus_returns_10_sectors_76_tickers(client):
     # All 76 tickers accounted for; C and MS not included (zero chunks)
     total_tickers = sum(s["ticker_count"] for s in sectors)
     assert total_tickers == 76, f"expected 76 tickers in tree, got {total_tickers}"
-    # Total chunk count across all sectors == 24290
+    # Chunk count is a function of the current corpus build (1 year vs N years
+    # × 78 tickers × ~300 chunks each). Just confirm the tree summed counts
+    # match the in-memory pipeline's chunk total.
+    expected_total = await client.get("/api/health")
+    expected_chunk_count = expected_total.json()["chunks_loaded"]
     total_chunks = sum(s["chunk_count"] for s in sectors)
-    assert total_chunks == 24290
+    assert total_chunks == expected_chunk_count
 
 
 @pytest.mark.asyncio
@@ -59,7 +63,9 @@ async def test_corpus_excludes_failed_tickers(client):
 
 @pytest.mark.asyncio
 async def test_corpus_items_sorted_naturally(client):
-    """Items should be: 1, 1A, 1B, 1C, 2, 3, ..., 7, 7A, 8, 9, 9A, ..."""
+    """Items should be: 1, 1A, 1B, 1C, 2, 3, ..., 7, 7A, 8, 9, 9A, ...
+    With the multi-year shape (sector → ticker → years → items), we drill
+    into the first (most recent) year of AAPL to read the item order."""
     r = await client.get("/api/corpus")
     aapl = None
     for s in r.json()["sectors"]:
@@ -68,7 +74,8 @@ async def test_corpus_items_sorted_naturally(client):
                 aapl = t
                 break
     assert aapl is not None
-    items = [i["item"] for i in aapl["items"]]
+    assert aapl["years"], "AAPL should have at least one year of filings"
+    items = [i["item"] for i in aapl["years"][0]["items"]]
     # 1 must come before 1A which must come before 10
     if "1" in items and "1A" in items and "10" in items:
         assert items.index("1") < items.index("1A") < items.index("10")

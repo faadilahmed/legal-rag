@@ -102,6 +102,7 @@ async def stream_chat(
     thread_id: str,
     user_content: str,
     ticker_filter: list[str] | None,
+    year_filter: list[int] | None,
     top_k_rerank: int | None,
     pipeline,
     db: aiosqlite.Connection,
@@ -135,8 +136,12 @@ async def stream_chat(
         {"phase": "retrieving", "label": f"Searching {n_chunks_total:,} chunks"},
     )
     ticker_set = set(ticker_filter) if ticker_filter else None
+    year_set = set(year_filter) if year_filter else None
     candidates = pipeline.retriever.retrieve(
-        user_content, k=DENSE_TOP_K, ticker_filter=ticker_set
+        user_content,
+        k=DENSE_TOP_K,
+        ticker_filter=ticker_set,
+        year_filter=year_set,
     )
 
     top_k = top_k_rerank or RERANK_TOP_K

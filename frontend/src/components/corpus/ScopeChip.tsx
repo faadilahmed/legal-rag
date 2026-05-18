@@ -4,8 +4,17 @@ import { Button } from "@/components/ui/button"
 import { useScope } from "@/runtime/ScopeContext"
 
 export function ScopeChip() {
-  const { tickers, clear } = useScope()
-  if (tickers.size === 0) return null
+  const { tickers, years, clear, hasAny } = useScope()
+  if (!hasAny) return null
+  const parts: string[] = []
+  if (tickers.size > 0) {
+    parts.push(
+      `${tickers.size} ticker${tickers.size === 1 ? "" : "s"}`,
+    )
+  }
+  if (years.size > 0) {
+    parts.push(`${years.size} year${years.size === 1 ? "" : "s"}`)
+  }
   return (
     <Button
       variant="secondary"
@@ -14,9 +23,7 @@ export function ScopeChip() {
       onClick={clear}
       title="Clear scope"
     >
-      <span>
-        Scope: {tickers.size} ticker{tickers.size === 1 ? "" : "s"}
-      </span>
+      <span>Scope: {parts.join(" · ")}</span>
       <X className="h-3 w-3" />
     </Button>
   )

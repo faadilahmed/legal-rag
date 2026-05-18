@@ -30,18 +30,27 @@ class HybridRetriever:
         query: str,
         k: int = DENSE_TOP_K,
         ticker_filter: set[str] | None = None,
+        year_filter: set[int] | None = None,
     ) -> list[dict]:
         """Return top-k chunks ranked by RRF over dense + sparse, with score attached.
 
-        If ticker_filter is given (a non-empty set of ticker strings), only chunks
-        whose ticker is in the set are considered. We post-filter rather than
+        If ticker_filter or year_filter is given (non-empty sets), only chunks
+        matching ALL active filters are considered. We post-filter rather than
         rebuild sub-indexes:
         - FAISS over-fetches (max(k*10, 200)) then filters retrieved indices.
         - BM25 zero-masks non-allowed positional scores to -inf before argsort.
         """
-        if ticker_filter:
+        active = ticker_filter or year_filter
+        if active:
+            def _allowed(c: dict) -> bool:
+                if ticker_filter and c["ticker"] not in ticker_filter:
+                    return False
+                if year_filter and c.get("year") not in year_filter:
+                    return False
+                return True
+
             allowed_ids = {
-                i for i, c in enumerate(self.index.chunks) if c["ticker"] in ticker_filter
+                i for i, c in enumerate(self.index.chunks) if _allowed(c)
             }
             dense_search_k = min(len(self.index.chunks), max(k * 10, 200))
         else:

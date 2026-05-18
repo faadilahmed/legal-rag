@@ -2,17 +2,23 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 
 interface ScopeContextValue {
   tickers: ReadonlySet<string>
-  toggle: (ticker: string) => void
+  years: ReadonlySet<number>
+  toggleTicker: (ticker: string) => void
+  toggleYear: (year: number) => void
   clear: () => void
-  isActive: (ticker: string) => boolean
+  isTickerActive: (ticker: string) => boolean
+  isYearActive: (year: number) => boolean
+  /** True when at least one ticker OR year is active. Used by ScopeChip. */
+  hasAny: boolean
 }
 
 const ScopeContext = createContext<ScopeContextValue | null>(null)
 
 export function ScopeProvider({ children }: { children: React.ReactNode }) {
   const [tickers, setTickers] = useState<Set<string>>(() => new Set())
+  const [years, setYears] = useState<Set<number>>(() => new Set())
 
-  const toggle = useCallback((ticker: string) => {
+  const toggleTicker = useCallback((ticker: string) => {
     setTickers((prev) => {
       const next = new Set(prev)
       if (next.has(ticker)) next.delete(ticker)
@@ -21,16 +27,32 @@ export function ScopeProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
-  const clear = useCallback(() => setTickers(new Set()), [])
+  const toggleYear = useCallback((year: number) => {
+    setYears((prev) => {
+      const next = new Set(prev)
+      if (next.has(year)) next.delete(year)
+      else next.add(year)
+      return next
+    })
+  }, [])
+
+  const clear = useCallback(() => {
+    setTickers(new Set())
+    setYears(new Set())
+  }, [])
 
   const value = useMemo<ScopeContextValue>(
     () => ({
       tickers,
-      toggle,
+      years,
+      toggleTicker,
+      toggleYear,
       clear,
-      isActive: (t) => tickers.has(t),
+      isTickerActive: (t) => tickers.has(t),
+      isYearActive: (y) => years.has(y),
+      hasAny: tickers.size > 0 || years.size > 0,
     }),
-    [tickers, toggle, clear],
+    [tickers, years, toggleTicker, toggleYear, clear],
   )
 
   return <ScopeContext.Provider value={value}>{children}</ScopeContext.Provider>

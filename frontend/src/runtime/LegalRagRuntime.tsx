@@ -56,6 +56,7 @@ function dbRowToMessageLike(row: MessageRow): ThreadMessageLike {
 function buildAdapter(
   getThreadId: () => Promise<string>,
   getScopeTickers: () => ReadonlySet<string>,
+  getScopeYears: () => ReadonlySet<number>,
 ): ChatModelAdapter {
   return {
     async *run({ messages, abortSignal }) {
@@ -69,8 +70,10 @@ function buildAdapter(
 
       const threadId = await getThreadId()
       const scopeTickers = getScopeTickers()
+      const scopeYears = getScopeYears()
       const tickerFilter =
         scopeTickers.size > 0 ? Array.from(scopeTickers) : null
+      const yearFilter = scopeYears.size > 0 ? Array.from(scopeYears) : null
 
       const res = await fetch("/api/chat/stream", {
         method: "POST",
@@ -79,6 +82,7 @@ function buildAdapter(
           thread_id: threadId,
           message: { role: "user", content: userText },
           ticker_filter: tickerFilter,
+          year_filter: yearFilter,
         }),
         signal: abortSignal,
       })
@@ -230,9 +234,10 @@ export function RuntimeMount({
           return created.id
         },
         () => scope.tickers,
+        () => scope.years,
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [threadId, scope.tickers],
+    [threadId, scope.tickers, scope.years],
   )
 
   const runtime = useLocalRuntime(adapter, { initialMessages })

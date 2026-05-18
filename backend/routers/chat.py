@@ -19,6 +19,7 @@ class ChatRequest(BaseModel):
     thread_id: str
     message: ChatMessageIn
     ticker_filter: list[str] | None = None
+    year_filter: list[int] | None = None
     top_k_rerank: int | None = None
 
 
@@ -42,6 +43,7 @@ async def chat_stream(
             req.thread_id,
             req.message.content,
             req.ticker_filter,
+            req.year_filter,
             req.top_k_rerank,
             pipeline,
             db,

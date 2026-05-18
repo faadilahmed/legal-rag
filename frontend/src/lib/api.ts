@@ -94,6 +94,7 @@ export const api = {
   async listChunks(
     ticker: string,
     item: string,
+    year?: number | null,
     limit = 200,
     offset = 0,
   ): Promise<{ items: ChunkPreview[]; total: number }> {
@@ -103,6 +104,7 @@ export const api = {
       limit: String(limit),
       offset: String(offset),
     })
+    if (year) params.set("year", String(year))
     const r = await fetch(`/api/chunks?${params}`)
     return jsonOrThrow<{ items: ChunkPreview[]; total: number }>(r)
   },
