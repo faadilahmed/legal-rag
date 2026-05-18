@@ -22,6 +22,8 @@ from backend.routers import chat as chat_router  # noqa: E402
 from backend.routers import corpus as corpus_router  # noqa: E402
 from backend.routers import threads as threads_router  # noqa: E402
 from backend.routers import trace as trace_router  # noqa: E402
+from backend.services.blob_loader import ensure_index_present  # noqa: E402
+from src.config import INDEX_DIR  # noqa: E402
 from src.pipeline import RAGPipeline  # noqa: E402
 
 
@@ -29,6 +31,9 @@ from src.pipeline import RAGPipeline  # noqa: E402
 async def lifespan(app: FastAPI):
     init_schema(DB_PATH)
     print(f"[startup] SQLite schema ready at {DB_PATH}")
+    # Pull the FAISS + BM25 index from Azure Blob if we're deployed (no-op
+    # locally — local builds already wrote the files into INDEX_DIR).
+    ensure_index_present(INDEX_DIR)
     print("[startup] loading RAGPipeline (FAISS + BM25 + models)...")
     app.state.pipeline = RAGPipeline.load()
     n_chunks = len(app.state.pipeline.index.chunks)

@@ -1,0 +1,40 @@
+# Without this, `docker build` sends the full 11 GB of raw SEC filings to
+# the build daemon and your laptop fan spins for 20 minutes. Keep this tight.
+
+# Heavy data: NEVER copy into the image
+data/
+**/.hf_cache/
+
+# Python build/test artifacts
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Frontend (we build it separately for Static Web Apps; not needed in backend image)
+frontend/
+
+# Local secrets, never bake into an image
+.env
+.env.*
+!.env.example
+
+# Editor / OS junk
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Git + CI metadata
+.git/
+.github/
+
+# Misc local
+backend/data/         # local SQLite chat.db — Azure Files mount supplies its own
+*.log
+/tmp/
+artifacts/

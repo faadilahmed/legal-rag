@@ -1,4 +1,5 @@
 """Project-wide constants: paths, model names, retrieval params, ticker list, SEC user-agent."""
+import os
 from pathlib import Path
 
 # Paths
@@ -7,7 +8,10 @@ DATA_DIR = PROJECT_ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
 EVAL_DIR = DATA_DIR / "eval"
-INDEX_DIR = PROCESSED_DIR / "index"
+# INDEX_DIR can be overridden via env so a deployed container can cache the
+# downloaded FAISS/BM25 files in a writable mount (e.g. /app/index_cache)
+# instead of the source-tree default.
+INDEX_DIR = Path(os.environ.get("LEGAL_RAG_INDEX_DIR", PROCESSED_DIR / "index"))
 CHUNKS_PATH = PROCESSED_DIR / "chunks.jsonl"
 EMBEDDINGS_PATH = PROCESSED_DIR / "embeddings.npy"
 
