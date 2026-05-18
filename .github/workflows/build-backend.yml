@@ -1,0 +1,59 @@
+name: Build & push backend image
+
+# Builds the legal-rag backend container on GitHub's free Ubuntu runners
+# (native linux/amd64), tags it, and pushes to Azure Container Registry.
+# Triggered on every push to main that touches backend code, or manually
+# from the Actions tab.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'requirements.txt'
+      - 'src/**'
+      - 'backend/**'
+      - '.github/workflows/build-backend.yml'
+  workflow_dispatch:   # manual trigger from the Actions UI
+
+env:
+  REGISTRY: legalragacr45789.azurecr.io
+  IMAGE: legal-rag-backend
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Azure login (service principal)
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: ACR login
+        run: az acr login --name legalragacr45789
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE }}:buildcache,mode=max
+
+      - name: Image digest
+        run: |
+          echo "Pushed image:"
+          echo "  ${{ env.REGISTRY }}/${{ env.IMAGE }}:latest"
+          echo "  ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ github.sha }}"
