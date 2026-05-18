@@ -33,6 +33,23 @@ Question: {query}
 Answer with inline citations [chunk_id]:"""
 
 
+CHAT_SYSTEM_PROMPT = SYSTEM_PROMPT + """
+
+Conversation rules:
+- The user may ask follow-up questions referring to prior turns ("that company", "the second risk", etc.).
+- Resolve such references against the conversation so far and the current context.
+- If the current context does not support the follow-up, say so explicitly rather than guessing.
+"""
+
+CHAT_USER_TEMPLATE = """Context from SEC 10-K filings:
+
+{context}
+
+Current question: {query}
+
+Answer with inline citations [chunk_id]:"""
+
+
 CITATION_PATTERN = re.compile(r"\[([A-Za-z0-9_]+)\]")
 
 
@@ -65,3 +82,62 @@ class Generator:
             "citations": citations,
             "chunks_used": chunks,
         }
+
+    def generate_chat(
+        self,
+        query: str,
+        chunks: list[dict],
+        history: list[dict] | None = None,
+    ) -> dict:
+        """Multi-turn variant of generate().
+
+        `history` is a list of {"role": "user"|"assistant", "content": str}
+        ordered oldest-to-newest, NOT including the current `query`. The
+        current query, wrapped with retrieved context, becomes the final
+        user message.
+        """
+        history = history or []
+        context_msg = CHAT_USER_TEMPLATE.format(
+            context=self._format_context(chunks), query=query
+        )
+        messages = [*history, {"role": "user", "content": context_msg}]
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=1024,
+            system=CHAT_SYSTEM_PROMPT,
+            messages=messages,
+        )
+        answer = response.content[0].text
+        citations = sorted(set(CITATION_PATTERN.findall(answer)))
+        return {"answer": answer, "citations": citations, "chunks_used": chunks}
+
+    def stream_chat(
+        self,
+        query: str,
+        chunks: list[dict],
+        history: list[dict] | None = None,
+    ):
+        """Streaming multi-turn. Returns the Anthropic stream context manager.
+
+        Caller pattern:
+            with generator.stream_chat(query, chunks, history) as stream:
+                for text in stream.text_stream:
+                    # forward text to client
+                    ...
+                final = stream.get_final_message()  # for usage stats
+
+        The caller is responsible for accumulating tokens and persisting the
+        final message; this method does not accumulate or persist.
+        """
+        history = history or []
+        context_msg = CHAT_USER_TEMPLATE.format(
+            context=self._format_context(chunks), query=query
+        )
+        messages = [*history, {"role": "user", "content": context_msg}]
+        return self.client.messages.stream(
+            model=self.model,
+            max_tokens=1024,
+            system=CHAT_SYSTEM_PROMPT,
+            messages=messages,
+        )
