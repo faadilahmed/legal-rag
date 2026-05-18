@@ -5,6 +5,7 @@ import { Thread } from "@/components/chat/Thread"
 import { useLegalRagRuntime } from "@/runtime/LegalRagRuntime"
 import { useThreads } from "@/hooks/useThreads"
 import { ScopeProvider } from "@/runtime/ScopeContext"
+import { Toaster } from "@/components/ui/sonner"
 
 function ChatHost() {
   const threads = useThreads()
@@ -30,6 +31,7 @@ export default function App() {
   return (
     <ScopeProvider>
       <ChatHost />
+      <Toaster />
     </ScopeProvider>
   )
 }

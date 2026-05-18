@@ -6,6 +6,7 @@ import {
   type ChatModelRunResult,
 } from "@assistant-ui/react"
 import type { ThreadMessageLike } from "@assistant-ui/core"
+import { toast } from "sonner"
 
 import { api, type MessageRow } from "@/lib/api"
 import { parseStream } from "@/lib/sse"
@@ -95,19 +96,37 @@ function buildAdapter(
         ] as unknown as ChatModelRunResult["content"],
       })
 
-      for await (const frame of parseStream(res.body)) {
-        if (frame.kind === "text") {
-          acc += frame.text
-          yield emit()
-        } else if (frame.kind === "data") {
-          dataParts.push({ type: "data", name: frame.type, data: frame.value })
-          yield emit()
-        } else if (frame.kind === "done") {
-          // Final yield already captured everything; nothing to do.
-          return
-        } else if (frame.kind === "error") {
-          throw new Error(frame.message)
+      const emitWithError = (message: string): ChatModelRunResult => ({
+        content: [
+          { type: "text", text: acc },
+          ...dataParts,
+          { type: "data", name: "error", data: { message } },
+        ] as unknown as ChatModelRunResult["content"],
+      })
+
+      try {
+        for await (const frame of parseStream(res.body)) {
+          if (frame.kind === "text") {
+            acc += frame.text
+            yield emit()
+          } else if (frame.kind === "data") {
+            dataParts.push({ type: "data", name: frame.type, data: frame.value })
+            yield emit()
+          } else if (frame.kind === "done") {
+            // Final yield already captured everything; nothing to do.
+            return
+          } else if (frame.kind === "error") {
+            throw new Error(frame.message)
+          }
         }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error("[LegalRagRuntime] stream error:", e)
+        toast.error("Stream interrupted", { description: msg })
+        // Yield a final update with the partial answer + inline error footer.
+        // assistant-ui will persist this as the final message state.
+        yield emitWithError(msg)
+        return
       }
     },
   }
