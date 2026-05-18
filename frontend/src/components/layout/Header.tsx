@@ -2,6 +2,7 @@ import { Moon, Sun } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { ScopeChip } from "@/components/corpus/ScopeChip"
 import { useTheme } from "@/hooks/useTheme"
 
 export function Header() {
@@ -16,7 +17,7 @@ export function Header() {
         </Badge>
       </div>
       <div className="flex items-center gap-2">
-        {/* Scope chip slot — populated in Phase E3. Placeholder for now. */}
+        <ScopeChip />
         <Button
           variant="ghost"
           size="icon"

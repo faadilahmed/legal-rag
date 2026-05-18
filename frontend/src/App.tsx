@@ -4,20 +4,14 @@ import { AppShell } from "@/components/layout/AppShell"
 import { Thread } from "@/components/chat/Thread"
 import { useLegalRagRuntime } from "@/runtime/LegalRagRuntime"
 import { useThreads } from "@/hooks/useThreads"
+import { ScopeProvider } from "@/runtime/ScopeContext"
 
-export default function App() {
-  const threadsState = useThreads()
-  const { runtime, hydrated } = useLegalRagRuntime(
-    threadsState.activeId,
-    threadsState.createThread,
-  )
-
+function ChatHost() {
+  const threads = useThreads()
+  const { runtime, hydrated } = useLegalRagRuntime(threads.activeId, threads.createThread)
   return (
-    // key={activeId} forces a full remount of the runtime when the selected
-    // thread changes. This is simpler than a "switch thread" API on the runtime
-    // and is fast enough in practice (<200 ms typical load).
-    <AssistantRuntimeProvider runtime={runtime} key={threadsState.activeId ?? "null"}>
-      <AppShell threadsState={threadsState}>
+    <AssistantRuntimeProvider runtime={runtime} key={threads.activeId ?? "null"}>
+      <AppShell threadsState={threads}>
         {hydrated ? (
           <Thread />
         ) : (
@@ -29,5 +23,13 @@ export default function App() {
         )}
       </AppShell>
     </AssistantRuntimeProvider>
+  )
+}
+
+export default function App() {
+  return (
+    <ScopeProvider>
+      <ChatHost />
+    </ScopeProvider>
   )
 }

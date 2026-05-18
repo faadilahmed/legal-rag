@@ -11,6 +11,7 @@ import { api, type MessageRow } from "@/lib/api"
 import { parseStream } from "@/lib/sse"
 import type { Thread } from "@/lib/types"
 import type { SourcesData } from "@/lib/types"
+import { useScope } from "@/runtime/ScopeContext"
 
 /**
  * Convert a DB message row to the ThreadMessageLike shape that
@@ -51,7 +52,10 @@ function dbRowToMessageLike(row: MessageRow): ThreadMessageLike {
   }
 }
 
-function buildAdapter(getThreadId: () => Promise<string>): ChatModelAdapter {
+function buildAdapter(
+  getThreadId: () => Promise<string>,
+  getScopeTickers: () => ReadonlySet<string>,
+): ChatModelAdapter {
   return {
     async *run({ messages, abortSignal }) {
       const last = messages[messages.length - 1]
@@ -63,13 +67,17 @@ function buildAdapter(getThreadId: () => Promise<string>): ChatModelAdapter {
         .join("")
 
       const threadId = await getThreadId()
+      // Read the current scope at request time so late toggles are captured.
+      const scopeTickers = getScopeTickers()
+      const tickerFilter = scopeTickers.size > 0 ? Array.from(scopeTickers) : null
+
       const res = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           thread_id: threadId,
           message: { role: "user", content: userText },
-          ticker_filter: null,
+          ticker_filter: tickerFilter,
         }),
         signal: abortSignal,
       })
@@ -128,6 +136,7 @@ export function useLegalRagRuntime(
   const [initialMessages, setInitialMessages] = useState<
     readonly ThreadMessageLike[] | null
   >(null)
+  const scope = useScope()
 
   // Whenever the active thread changes (sidebar click or first mount),
   // load its messages. We reset `initialMessages` to null so the runtime
@@ -166,15 +175,20 @@ export function useLegalRagRuntime(
 
   // The adapter resolves the threadId lazily: if there is an activeThreadId
   // use it directly; otherwise call onCreateThread() to make one.
+  // Re-create when threadId OR scope.tickers changes so the adapter always
+  // closes over the current scope state.
   const adapter = useMemo((): ChatModelAdapter => {
-    return buildAdapter(async () => {
-      if (threadId) return threadId
-      const created = await onCreateThread()
-      setThreadId(created.id)
-      return created.id
-    })
+    return buildAdapter(
+      async () => {
+        if (threadId) return threadId
+        const created = await onCreateThread()
+        setThreadId(created.id)
+        return created.id
+      },
+      () => scope.tickers,
+    )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadId])
+  }, [threadId, scope.tickers])
 
   // useLocalRuntime must be called unconditionally (React rules).
   // Pass initialMessages once they're ready; the runtime uses them to seed
