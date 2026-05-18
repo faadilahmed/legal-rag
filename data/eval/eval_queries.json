@@ -1,0 +1,9 @@
+[
+  {
+    "query": "What are Apple's main supply chain risks?",
+    "expected_tickers": ["AAPL"],
+    "expected_items": ["1A"],
+    "expected_keywords": ["supply chain", "manufacturing", "Asia", "concentration"],
+    "gold_answer": "Apple depends on concentrated manufacturing partners in Asia, faces exposure to geopolitical tensions affecting components, and has historically experienced production disruptions from natural disasters and pandemics."
+  }
+]
