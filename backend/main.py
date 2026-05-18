@@ -21,6 +21,7 @@ from backend.models import HealthResponse  # noqa: E402
 from backend.routers import chat as chat_router  # noqa: E402
 from backend.routers import corpus as corpus_router  # noqa: E402
 from backend.routers import threads as threads_router  # noqa: E402
+from backend.routers import trace as trace_router  # noqa: E402
 from src.pipeline import RAGPipeline  # noqa: E402
 
 
@@ -57,6 +58,7 @@ app.add_middleware(
 app.include_router(threads_router.router)
 app.include_router(chat_router.router)
 app.include_router(corpus_router.router)
+app.include_router(trace_router.router)
 
 
 @app.get("/api/health", response_model=HealthResponse)

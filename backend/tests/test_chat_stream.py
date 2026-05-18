@@ -84,3 +84,56 @@ async def test_stream_emits_sources_then_text_then_done(chat_client):
     ts = r.json()["threads"]
     [our_thread] = [t for t in ts if t["id"] == tid]
     assert our_thread["title"].startswith("What are Apple")
+
+
+@pytest.mark.asyncio
+async def test_trace_endpoint_returns_full_trace(chat_client):
+    """After a chat turn, the trace endpoint returns the captured trace."""
+    # Create a thread + chat turn
+    r = await chat_client.post("/api/threads", json={"title": "trace test"})
+    tid = r.json()["id"]
+    body = {
+        "thread_id": tid,
+        "message": {"role": "user", "content": "What are Apple supply chain risks?"},
+    }
+    async with chat_client.stream("POST", "/api/chat/stream", json=body, timeout=60.0) as resp:
+        assert resp.status_code == 200
+        async for _ in resp.aiter_lines():
+            pass
+
+    # Find the assistant message id
+    r = await chat_client.get(f"/api/threads/{tid}/messages")
+    msgs = r.json()["messages"]
+    asst = [m for m in msgs if m["role"] == "assistant"][0]
+    assert asst["has_trace"] is True
+
+    # GET its trace
+    r = await chat_client.get(f"/api/threads/{tid}/messages/{asst['id']}/trace")
+    assert r.status_code == 200
+    trace = r.json()
+    assert "query" in trace
+    assert "retrieval" in trace
+    assert "candidates" in trace["retrieval"]
+    # Candidates list — should have ~50 entries
+    assert len(trace["retrieval"]["candidates"]) >= 20, (
+        f"expected >=20 reranked candidates, got {len(trace['retrieval']['candidates'])}"
+    )
+    # Some candidates should have dense or sparse score populated
+    assert any(
+        c.get("dense_score") is not None or c.get("sparse_score") is not None
+        for c in trace["retrieval"]["candidates"]
+    )
+    # Timings should be present
+    assert set(trace["timings_ms"].keys()) & {"embed", "retrieve", "rerank", "generate"}
+    # Prompt section
+    assert "system" in trace["prompt"]
+    assert "messages" in trace["prompt"]
+
+
+@pytest.mark.asyncio
+async def test_trace_endpoint_404_on_missing(chat_client):
+    """Missing message id → 404."""
+    r = await chat_client.post("/api/threads", json={})
+    tid = r.json()["id"]
+    r = await chat_client.get(f"/api/threads/{tid}/messages/nonexistent-id/trace")
+    assert r.status_code == 404
