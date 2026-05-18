@@ -27,9 +27,13 @@ class RAGPipeline:
         generator = Generator()
         return cls(embedder, index, retriever, reranker, generator)
 
-    def answer(self, query: str) -> dict:
-        """Full RAG path: retrieve top-50, rerank to top-5, generate."""
-        candidates = self.retriever.retrieve(query, k=DENSE_TOP_K)
+    def answer(self, query: str, ticker_filter: set[str] | None = None) -> dict:
+        """Full RAG path: retrieve top-50, rerank to top-5, generate.
+
+        Optional ticker_filter restricts retrieval to chunks whose ticker is in
+        the set. Default None preserves the prior behavior.
+        """
+        candidates = self.retriever.retrieve(query, k=DENSE_TOP_K, ticker_filter=ticker_filter)
         reranked = self.reranker.rerank(query, candidates, top_k=RERANK_TOP_K)
         result = self.generator.generate(query, reranked)
         return {

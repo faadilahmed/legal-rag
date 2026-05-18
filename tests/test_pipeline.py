@@ -51,3 +51,15 @@ def test_pipeline_answers_apple_question(tiny_pipeline):
     assert len(result["answer"]) > 30
     assert "AAPL_1A_0" in result["citations"]
     assert any(c["chunk_id"] == "AAPL_1A_0" for c in result["chunks"])
+
+
+def test_pipeline_ticker_filter_excludes_other_tickers(tiny_pipeline):
+    """End-to-end with ticker_filter — answer's chunks are all from the allowed set."""
+    result = tiny_pipeline.answer(
+        "What are the main risks?",
+        ticker_filter={"AAPL"},
+    )
+    # All retrieved chunks must be AAPL
+    assert all(c["ticker"] == "AAPL" for c in result["chunks"]), \
+        f"ticker_filter leaked: {[c['ticker'] for c in result['chunks']]}"
+    assert len(result["chunks"]) >= 1
