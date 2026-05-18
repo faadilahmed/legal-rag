@@ -270,7 +270,7 @@ const EXAMPLE_PROMPTS: { tag: string; prompt: string }[] = [
   {
     tag: "Multi-company",
     prompt:
-      "Which technology companies cite AI as both an opportunity and a regulatory risk?",
+      "How do Microsoft, Google, and Meta describe AI-related risk factors?",
   },
   {
     tag: "Evolution",
