@@ -3,13 +3,14 @@ emit sources → stream Claude → persist assistant → auto-title → done."""
 import asyncio
 import json
 import re
+import time
 
 import aiosqlite
 
 from backend.routers.threads import db_append_message, db_set_thread_title
 from backend.services import sse
-from src.config import DENSE_TOP_K, RERANK_TOP_K
-from src.generate import CITATION_PATTERN
+from src.config import DENSE_TOP_K, RERANK_TOP_K, SPARSE_TOP_K
+from src.generate import CHAT_SYSTEM_PROMPT, CHAT_USER_TEMPLATE, CITATION_PATTERN
 
 
 FOLLOWUPS_SYSTEM = (
@@ -162,7 +163,8 @@ async def stream_chat(
     """Async generator yielding SSE-encoded bytes for one chat turn.
 
     Persists both halves of the turn (user message before streaming starts,
-    assistant message after the stream completes)."""
+    assistant message after the stream completes). Captures a full per-turn
+    trace dict and persists it alongside the assistant message."""
     # 1. Persist user message + grab prior history (excluding the just-inserted user msg)
     # Load history BEFORE inserting so the stream-time "history" is conversation-to-date.
     from backend.routers.threads import _row_to_message  # internal helper
@@ -178,7 +180,14 @@ async def stream_chat(
 
     await db_append_message(db, thread_id, "user", user_content)
 
-    # 2. Retrieve + rerank (apply ticker filter if present)
+    # 2. Pre-embed query (cheap ~50ms) to capture first 24 dims for the trace viz.
+    timings_ms: dict[str, int] = {}
+
+    t_embed_start = time.perf_counter()
+    query_emb = pipeline.embedder.embed_query(user_content)  # numpy array, 384-dim
+    timings_ms["embed"] = int((time.perf_counter() - t_embed_start) * 1000)
+
+    # 3. Retrieve + rerank (apply ticker/year filter if present)
     # Emit phase status BEFORE each step so the UI can render a live stepper.
     # The frontend special-cases data-part name="status" to REPLACE rather
     # than APPEND so the message only ever holds the most recent phase.
@@ -189,40 +198,75 @@ async def stream_chat(
     )
     ticker_set = set(ticker_filter) if ticker_filter else None
     year_set = set(year_filter) if year_filter else None
+
+    # Count candidates that pass the active filters (for trace metadata).
+    if ticker_set or year_set:
+        n_candidates_after_filter = sum(
+            1
+            for c in pipeline.index.chunks
+            if (not ticker_set or c["ticker"] in ticker_set)
+            and (not year_set or c.get("year") in year_set)
+        )
+    else:
+        n_candidates_after_filter = n_chunks_total
+
+    t_retrieve_start = time.perf_counter()
     candidates = pipeline.retriever.retrieve(
         user_content,
         k=DENSE_TOP_K,
         ticker_filter=ticker_set,
         year_filter=year_set,
+        return_breakdown=True,
     )
+    timings_ms["retrieve"] = int((time.perf_counter() - t_retrieve_start) * 1000)
 
     top_k = top_k_rerank or RERANK_TOP_K
     yield sse.data_part(
         "status",
         {"phase": "reranking", "label": f"Reranking {len(candidates)} candidates"},
     )
-    reranked = pipeline.reranker.rerank(user_content, candidates, top_k=top_k)
+
+    t_rerank_start = time.perf_counter()
+    # return_all=True → ALL scored candidates with rerank_rank; we slice top_k for generation.
+    reranked_all = pipeline.reranker.rerank(
+        user_content, candidates, top_k=top_k, return_all=True
+    )
+    timings_ms["rerank"] = int((time.perf_counter() - t_rerank_start) * 1000)
+
+    # The chunks actually fed to Claude are the top-k slice.
+    reranked = reranked_all[:top_k]
 
     yield sse.data_part(
         "status",
         {"phase": "generating", "label": f"Generating from top {len(reranked)} sources"},
     )
 
-    # 3. Emit sources FIRST (so the UI mounts the panel before text streams in)
+    # 4. Emit sources FIRST (so the UI mounts the panel before text streams in)
     yield sse.data_part(
         "sources", {"chunks": [_chunk_to_source(c) for c in reranked]}
     )
 
-    # 4. Stream Claude
+    # Build the resolved system prompt and exact messages array for the trace.
+    corpus_meta = _corpus_meta(pipeline)
+    resolved_system_prompt = f"{CHAT_SYSTEM_PROMPT}\n\n{corpus_meta}"
+
     history_msgs = _build_history_messages(prior)
+    context_msg = CHAT_USER_TEMPLATE.format(
+        context=pipeline.generator._format_context(reranked),
+        query=user_content,
+    )
+    messages_sent = [*history_msgs, {"role": "user", "content": context_msg}]
+
+    # 5. Stream Claude
     accumulated: list[str] = []
     final = None
+    t_generate_start = time.perf_counter()
     try:
         with pipeline.generator.stream_chat(
             query=user_content,
             chunks=reranked,
             history=history_msgs,
-            extra_system=_corpus_meta(pipeline),
+            extra_system=corpus_meta,
         ) as stream:
             for text in stream.text_stream:
                 accumulated.append(text)
@@ -231,43 +275,94 @@ async def stream_chat(
     except Exception as e:  # surface any model/network error to the client
         yield sse.error(f"{type(e).__name__}: {e}")
         return
+    timings_ms["generate"] = int((time.perf_counter() - t_generate_start) * 1000)
 
     # Streaming finished — mark phase complete so the UI can collapse the stepper.
     yield sse.data_part("status", {"phase": "done", "label": "Done"})
 
-    # 5. Persist assistant message + sources
+    # 6. Build the trace dict.
+    trace = {
+        "query": user_content,
+        "query_embedding_preview": [float(x) for x in query_emb[:24].tolist()],
+        "filters": {
+            "ticker_filter": ticker_filter,
+            "year_filter": year_filter,
+        },
+        "retrieval": {
+            "n_chunks_in_index": n_chunks_total,
+            "n_candidates_after_filter": n_candidates_after_filter,
+            "dense_top_k": DENSE_TOP_K,
+            "sparse_top_k": SPARSE_TOP_K,
+            "candidates": [
+                {
+                    "chunk_id": c["chunk_id"],
+                    "ticker": c["ticker"],
+                    "year": c.get("year"),
+                    "item": c["item"],
+                    "section_title": c.get("section_title", ""),
+                    "dense_score": c.get("dense_score"),
+                    "dense_rank": c.get("dense_rank"),
+                    "sparse_score": c.get("sparse_score"),
+                    "sparse_rank": c.get("sparse_rank"),
+                    "rrf_score": c.get("retrieval_score"),
+                    "rrf_rank": c.get("rrf_rank"),
+                    "rerank_score": c.get("rerank_score"),
+                    "rerank_rank": c.get("rerank_rank"),
+                    "text_preview": c["text"][:200],
+                }
+                for c in reranked_all  # ALL candidates with both rrf and rerank info
+            ],
+        },
+        "rerank": {"top_k": top_k},
+        "prompt": {
+            "system": resolved_system_prompt,
+            "messages": messages_sent,
+        },
+        "timings_ms": timings_ms,
+        "usage": {
+            "prompt_tokens": getattr(final.usage, "input_tokens", 0) if final else 0,
+            "completion_tokens": getattr(final.usage, "output_tokens", 0) if final else 0,
+        },
+    }
+
+    # 7. Persist assistant message + sources + trace
     full_answer = "".join(accumulated)
     citations = sorted(set(CITATION_PATTERN.findall(full_answer)))
     sources_payload = {
         "chunks": [_chunk_to_source(c) for c in reranked],
         "citations": citations,
     }
-    await db_append_message(
+    persisted_msg = await db_append_message(
         db,
         thread_id,
         "assistant",
         content=full_answer,
         sources_json=json.dumps(sources_payload),
+        trace_json=json.dumps(trace),
     )
 
-    # Suggested follow-ups — one extra small Claude call (~200 tokens,
-    # ~$0.005). Best-effort: silently emits no frame on any failure so
-    # the main answer never depends on this succeeding.
+    # 8. Emit metadata frame so the frontend Trace button has the DB message id.
+    yield sse.data_part("metadata", {"db_message_id": persisted_msg.id})
+
+    # 9. Suggested follow-ups — one extra small Claude call (~200 tokens).
+    # Best-effort: silently emits no frame on any failure.
     if full_answer.strip():
+        t_followups_start = time.perf_counter()
         followups = await asyncio.to_thread(
             _generate_followups_sync,
             pipeline.generator,
             user_content,
             full_answer,
         )
+        timings_ms["followups"] = int((time.perf_counter() - t_followups_start) * 1000)
         if followups:
             yield sse.data_part("followups", {"questions": followups})
 
-    # 6. Auto-title on first turn
+    # 10. Auto-title on first turn
     if is_first_turn:
         await db_set_thread_title(db, thread_id, _title_from(user_content))
 
-    # 7. Done
+    # 11. Done
     usage = {}
     if final is not None and getattr(final, "usage", None):
         usage = {
