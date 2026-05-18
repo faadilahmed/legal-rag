@@ -13,7 +13,10 @@ pipeline = RAGPipeline.load()
 
 
 def answer_question(query: str, history: list) -> tuple:
-    """Run one query through the pipeline; return updated chat history, sources panel, cleared input."""
+    """Run one query through the pipeline; return updated chat history, sources panel, cleared input.
+
+    history is a list of {"role": ..., "content": ...} dicts (Gradio 6.x messages format).
+    """
     if not query.strip():
         return history, "", ""
 
@@ -25,11 +28,14 @@ def answer_question(query: str, history: list) -> tuple:
         for c in result["chunks"]
     ])
 
-    history = history + [(query, result["answer"])]
+    history = history + [
+        {"role": "user", "content": query},
+        {"role": "assistant", "content": result["answer"]},
+    ]
     return history, sources_md, ""
 
 
-with gr.Blocks(theme=gr.themes.Soft(), title="SEC 10-K Q&A") as demo:
+with gr.Blocks(title="SEC 10-K Q&A") as demo:
     gr.Markdown("# 📊 SEC 10-K Q&A")
     gr.Markdown(
         "*Hybrid retrieval over ~78 SEC filings · citation-grounded answers · "
@@ -38,7 +44,11 @@ with gr.Blocks(theme=gr.themes.Soft(), title="SEC 10-K Q&A") as demo:
 
     with gr.Row():
         with gr.Column(scale=2):
-            chatbot = gr.Chatbot(label="Answer", height=500, show_label=False)
+            chatbot = gr.Chatbot(
+                label="Answer",
+                height=500,
+                show_label=False,
+            )
             msg = gr.Textbox(
                 placeholder="What are Apple's main supply chain risks?",
                 show_label=False,
@@ -67,4 +77,4 @@ with gr.Blocks(theme=gr.themes.Soft(), title="SEC 10-K Q&A") as demo:
 
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(theme=gr.themes.Soft())
