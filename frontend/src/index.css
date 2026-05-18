@@ -59,3 +59,13 @@
     @apply font-mono;
   }
 }
+
+@layer utilities {
+  @keyframes pipeline-arrow-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+  .pipeline-arrow {
+    animation: pipeline-arrow-pulse 2.6s ease-in-out infinite;
+  }
+}
