@@ -1,6 +1,6 @@
 # SEC 10-K Q&A — Hybrid Retrieval with Citation-Grounded Generation
 
-A semantic search and Q&A system over ~80 SEC 10-K filings, demonstrating production-grade RAG architecture: hybrid retrieval (FAISS + BM25 fused with Reciprocal Rank Fusion), cross-encoder reranking, citation-grounded generation with Claude, RAGAS-based evaluation, and a PySpark embedding scale-up module.
+A semantic search and Q&A web app over ~80 SEC 10-K filings, demonstrating production-grade RAG architecture: hybrid retrieval (FAISS + BM25 with RRF), cross-encoder reranking, multi-turn chat with citation-grounded generation via Claude, RAGAS-based evaluation, and a PySpark embedding scale-up module. UI is a React + assistant-ui frontend talking to a FastAPI backend.
 
 ## Why this project
 
@@ -16,12 +16,20 @@ SEC EDGAR → ~78 10-Ks → SGML extraction → HTML → text + Item sections
   → sentence-transformer embeddings (also: PySpark Pandas-UDF variant)
   → FAISS IndexFlatIP (dense) + BM25Okapi (sparse) indexes
 
-QUERY TIME
-──────────
-question → hybrid retrieve (FAISS top-50 + BM25 top-50)
-        → RRF fusion (K=60) → cross-encoder rerank (top-5)
-        → Claude Opus 4.7 with citation-grounded prompt
-        → cited answer + sources panel
+QUERY TIME (server-side per turn)
+─────────────────────────────────
+question + history → hybrid retrieve (FAISS top-50 + BM25 top-50)
+  → RRF fusion (K=60) → cross-encoder rerank (top-5)
+  → Claude Opus 4.7 streaming with citation-grounded prompt + prior turns
+  → SSE: sources frame first, then text deltas, then done
+
+WEB STACK
+─────────
+React 18 + Vite + assistant-ui (chat primitives) + shadcn/ui (sidebar/sheet)
+  ↕ /api/* (Vite proxy)
+FastAPI + aiosqlite (threads + messages persisted across refresh)
+  ↕ in-memory
+existing src/ RAGPipeline (untouched)
 
 EVALUATION
 ──────────
@@ -33,6 +41,12 @@ hand-labeled query set → Recall@5, MRR (retrieval)
 
 | Component | Tool | Why |
 |---|---|---|
+| Frontend | React 18 + Vite 5 + TypeScript | SPA, no SSR needed with a Python backend |
+| Chat UI | @assistant-ui/react 0.14 | LocalRuntime + custom adapter; data-parts for inline sources |
+| UI components | shadcn/ui | Resizable, Tabs, Accordion, Sheet, Checkbox, DropdownMenu, Sonner toasts |
+| Styling | Tailwind 3.4, dark mode by default | |
+| Backend | FastAPI + aiosqlite | Raw SQL — two tables, no ORM |
+| Streaming | SSE (assistant-ui Data Stream protocol) | Text deltas + named data parts |
 | Embeddings | `sentence-transformers/all-MiniLM-L6-v2` | 384-dim, CPU-friendly, production default |
 | Reranking | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Top-K precision improvement |
 | Dense retrieval | FAISS (`IndexFlatIP`) | Sub-ms on ~24k vectors |
@@ -41,8 +55,50 @@ hand-labeled query set → Recall@5, MRR (retrieval)
 | Generation | Claude Opus 4.7 | Citation-grounded prompting, inline `[chunk_id]` |
 | Evaluation | RAGAS + hand-labeled set | Faithfulness, answer relevancy, context precision |
 | Distributed compute | PySpark (Pandas UDFs) | Demonstrates scale-up pattern |
-| UI | Gradio | Clean local-first interface |
 | Python env | Python 3.12, uv-managed venv | Reproducible, fast |
+
+## Web app — local dev
+
+The frontend (Vite dev server) talks to the FastAPI backend via a `/api` proxy. Run them in two terminals:
+
+**Terminal 1 — backend:**
+```bash
+source .venv/bin/activate
+uvicorn backend.main:app --port 8000 --reload
+```
+
+The first start takes ~10 seconds (loads FAISS + BM25 + the embedder/cross-encoder models). Subsequent requests are sub-second.
+
+**Terminal 2 — frontend:**
+```bash
+cd frontend
+npm install                # first time only
+npm run dev                # opens http://localhost:5173
+```
+
+Visit the URL Vite prints. The app:
+- Shows a "New chat" button at the top of the left sidebar; switch tabs to "Documents" to browse the corpus by sector → ticker → Item → chunk.
+- Check tickers in the Documents tab to scope retrieval to those filings only (a "Scope: N tickers ×" chip appears in the header).
+- Click any source card under an assistant message to slide open the full chunk text.
+- Chats persist across refreshes (SQLite at `backend/data/chat.db`).
+
+## Setup (full first-time install)
+
+```bash
+# Python side
+uv venv --python 3.12 && source .venv/bin/activate
+uv pip install -r requirements.txt
+cp .env.example .env  # add ANTHROPIC_API_KEY
+
+# Build the index (one-time, ~3 minutes total)
+python -m src.ingest              # ~2 min — download 78 10-Ks
+python scripts/build_index.py     # ~1 min — preprocess + chunk + embed + index
+
+# Frontend deps
+cd frontend && npm install && cd ..
+```
+
+Then run the two-terminal dev setup above. The full web app — chat with citations, threads sidebar, document browser with scope filter — is at http://localhost:5173.
 
 ## Corpus snapshot
 
@@ -109,67 +165,52 @@ The retrieval architecture itself — hybrid dense+sparse with reranking — tra
 2. **The SEC user-agent parsing in the original spec produced invalid emails.** `"Faadil Ahmed faadil@x.com".split(" ", 1)` yields `("Faadil", "Ahmed faadil@x.com")`. Fix: `rpartition(" ")` so the last space is the split point.
 3. **Cross-encoder reranking visibly fixed retrieval order on the seed query.** Raw retrieval put a non-Apple chunk at rank 1; rerank promoted `AAPL_1A_35` to score 3.93 vs next-best 1.07.
 4. **macOS + Spark + sentence-transformers needs `device="cpu"` explicitly.** Auto-MPS detection dies after the Spark Python worker forks, with a cryptic `XPC_ERROR_CONNECTION_INVALID` crash.
-
-## Setup
-
-```bash
-# Python 3.12 via uv
-uv venv --python 3.12 && source .venv/bin/activate
-uv pip install -r requirements.txt
-
-cp .env.example .env  # then add ANTHROPIC_API_KEY
-
-# One-time build (~2 minutes ingest + ~2 minutes embed on Apple Silicon)
-python -m src.ingest                  # download 78 10-Ks
-python scripts/build_index.py         # preprocess + chunk + embed + index
-
-# Run evaluation
-python scripts/run_eval.py
-
-# Launch UI
-python app/gradio_app.py              # opens http://127.0.0.1:7860
-```
-
-## PySpark module
-
-```bash
-# Java 17 required (Temurin on macOS via Homebrew is fine)
-export JAVA_HOME=$(/usr/libexec/java_home -v 17)
-export PYSPARK_PYTHON=$(pwd)/.venv/bin/python
-python -m src.spark_embed
-```
-
-This writes `data/processed/embeddings_spark.parquet` with the embedding + lineage columns. See `docs/SPARK_SETUP.md` for details.
+5. **Gradio is the wrong tool for ChatGPT-style UIs.** Gradio's `gr.Chatbot` is one monolithic component — no per-message customization, no proper sidebar, no modals. Replacing it with React + assistant-ui got us: collapsible threads/documents sidebars, per-message inline source expanders, dark mode by default, persistent chat history, and a "stop generating" button — all with native UX patterns that Gradio can't do cleanly. The backend was a clean separation: FastAPI wraps the existing `RAGPipeline` without modifying it (just two small additive extensions for multi-turn and ticker-filter).
 
 ## Repo layout
 
 ```
-src/          pipeline modules (one responsibility each)
-  config.py     paths, model names, retrieval params, ticker list, SEC user-agent
-  ingest.py     SEC EDGAR download
-  preprocess.py SGML → HTML → text → Item sections
-  chunk.py      recursive structure-aware chunking
-  embed.py      sentence-transformers wrapper
-  spark_embed.py distributed embedding via Pandas UDF (scale-up demo)
-  index.py      FAISS + BM25 hybrid index with save/load
-  retrieve.py   hybrid retrieval + RRF fusion
-  rerank.py     cross-encoder reranker
-  generate.py   Claude generator with inline citations
-  evaluate.py   Recall@k, MRR, RAGAS wrappers
-  pipeline.py   end-to-end orchestrator
+src/                  pipeline modules (unchanged from the Gradio era)
+  config.py             paths, model names, retrieval params, ticker list, SEC user-agent
+  ingest.py             SEC EDGAR download
+  preprocess.py         SGML → HTML → text → Item sections
+  chunk.py              recursive structure-aware chunking
+  embed.py              sentence-transformers wrapper
+  spark_embed.py        distributed embedding via Pandas UDF (scale-up demo)
+  index.py              FAISS + BM25 hybrid index with save/load
+  retrieve.py           hybrid retrieval + RRF fusion (+ optional ticker_filter)
+  rerank.py             cross-encoder reranker
+  generate.py           Claude generator with inline citations (+ multi-turn stream_chat)
+  evaluate.py           Recall@k, MRR, RAGAS wrappers
+  pipeline.py           end-to-end orchestrator
 
-app/          Gradio UI
-scripts/      build_index.py, run_eval.py
-tests/        pytest tests — one file per src/ module
-data/         raw/, processed/, eval/ (raw + processed gitignored)
-docs/         canonical spec, design addendum (records spec corrections), plan, Spark setup
+backend/              FastAPI app, SQLite, streaming chat orchestrator
+  main.py               FastAPI factory + lifespan (loads RAGPipeline once)
+  routers/              threads.py, chat.py, corpus.py
+  services/             chat_service.py (orchestrator), sse.py (wire encoder), corpus_service.py
+  tests/                pytest integration tests for each router
+
+frontend/             React + Vite + Tailwind app
+  src/runtime/          assistant-ui adapter (LegalRagRuntime) + ScopeContext
+  src/components/chat/  Thread, AssistantMessage, SourcesPanel, SourceCard, Composer
+  src/components/threads/  ThreadList, ThreadListItem (rename/delete)
+  src/components/corpus/   DocumentBrowser, SectorNode, TickerNode, ItemNode, ChunkRow, ChunkSheet, ScopeChip
+  src/components/layout/   AppShell (three-pane), LeftSidebar (tabs), Header (theme + scope chip)
+  src/hooks/            useThreads, useCorpus, useTheme
+  src/lib/              api.ts, sse.ts, types.ts, utils.ts
+
+data/                 raw/, processed/, eval/  (raw + processed gitignored; eval set tracked)
+scripts/              build_index.py, run_eval.py
+tests/                pytest tests — one file per src/ module
+docs/                 canonical spec, design addendum, plan, SPARK_SETUP.md
 ```
 
 ## Future work
 
-- HF Spaces deploy (single command: `gradio deploy`)
+- HF Spaces / Render / Fly.io deploy (Docker compose with backend + nginx for the frontend bundle)
 - Multi-year temporal extension (5-year window per company, year-stratified retrieval)
 - spaCy NER metadata layer for entity-filtered retrieval
 - GraphRAG: extract company/industry/competitor edges into a property graph
 - Counterfactual evaluation: remove a year/company and verify the answer correctly omits it
-- Better section detection for filings that don't follow standard 10-K layout (e.g., JPM)
+- "Cite by hover" — clicking an inline `[AAPL_1A_35]` citation in the answer text auto-opens the corresponding source card / chunk sheet
+- Conversation token-budget management (truncate to last N user-assistant pairs as history grows)
