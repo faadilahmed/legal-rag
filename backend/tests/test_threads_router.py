@@ -160,3 +160,38 @@ async def test_messages_ordered_by_seq(client):
     assert [m["content"] for m in msgs] == ["msg 1", "msg 2", "msg 3"]
     assert msgs[1]["sources"] == []  # assistant message has parsed sources
     assert msgs[0]["sources"] is None  # user message has none
+
+
+@pytest.mark.asyncio
+async def test_has_trace_flag_reflects_trace_json_presence(client):
+    """When db_append_message is called with trace_json, the listed message
+    should have has_trace=True. Otherwise False."""
+    import aiosqlite
+
+    import backend.config
+    from backend.routers.threads import db_append_message
+
+    r = await client.post("/api/threads", json={})
+    tid = r.json()["id"]
+
+    async with aiosqlite.connect(backend.config.DB_PATH) as conn:
+        await conn.execute("PRAGMA foreign_keys = ON")
+        # User msg — no trace
+        await db_append_message(conn, tid, "user", "hi")
+        # Assistant msg — with trace
+        await db_append_message(
+            conn,
+            tid,
+            "assistant",
+            "hello",
+            sources_json='{"chunks": []}',
+            trace_json='{"query": "hi", "retrieval": {}}',
+        )
+
+    r = await client.get(f"/api/threads/{tid}/messages")
+    msgs = r.json()["messages"]
+    assert len(msgs) == 2
+    assert msgs[0]["role"] == "user"
+    assert msgs[0]["has_trace"] is False
+    assert msgs[1]["role"] == "assistant"
+    assert msgs[1]["has_trace"] is True

@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS messages (
     role         TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
     content      TEXT NOT NULL,
     sources_json TEXT,
+    trace_json   TEXT,
     created_at   INTEGER NOT NULL,
     seq          INTEGER NOT NULL
 );
@@ -35,6 +36,11 @@ def init_schema(db_path: Path) -> None:
         conn.executescript(SCHEMA)
         conn.execute("PRAGMA journal_mode = WAL")
         conn.execute("PRAGMA foreign_keys = ON")
+        # Idempotent column adds for evolving schemas. PRAGMA returns
+        # (cid, name, type, notnull, dflt_value, pk) per column.
+        existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(messages)")}
+        if "trace_json" not in existing_cols:
+            conn.execute("ALTER TABLE messages ADD COLUMN trace_json TEXT")
         conn.commit()
     finally:
         conn.close()

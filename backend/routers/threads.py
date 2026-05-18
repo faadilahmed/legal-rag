@@ -42,6 +42,7 @@ def _row_to_message(row) -> Message:
         sources=json.loads(row[3]) if row[3] else None,
         created_at=row[4],
         seq=row[5],
+        has_trace=bool(row[6]),
     )
 
 
@@ -137,7 +138,7 @@ async def get_messages(
         if await cur.fetchone() is None:
             raise HTTPException(status_code=404, detail="Thread not found")
     async with db.execute(
-        "SELECT id, role, content, sources_json, created_at, seq "
+        "SELECT id, role, content, sources_json, created_at, seq, trace_json "
         "FROM messages WHERE thread_id = ? ORDER BY seq ASC",
         (thread_id,),
     ) as cur:
@@ -151,6 +152,7 @@ async def db_append_message(
     role: str,
     content: str,
     sources_json: str | None = None,
+    trace_json: str | None = None,
 ) -> Message:
     """Internal helper used by the chat service. Inserts a message and bumps
     the thread's updated_at. Returns the persisted Message."""
@@ -164,9 +166,9 @@ async def db_append_message(
         (next_seq,) = await cur.fetchone()
 
     await db.execute(
-        "INSERT INTO messages (id, thread_id, role, content, sources_json, created_at, seq) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (msg_id, thread_id, role, content, sources_json, now, next_seq),
+        "INSERT INTO messages (id, thread_id, role, content, sources_json, trace_json, created_at, seq) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (msg_id, thread_id, role, content, sources_json, trace_json, now, next_seq),
     )
     await db.execute(
         "UPDATE threads SET updated_at = ? WHERE id = ?", (now, thread_id)
@@ -179,6 +181,7 @@ async def db_append_message(
         sources=json.loads(sources_json) if sources_json else None,
         created_at=now,
         seq=next_seq,
+        has_trace=bool(trace_json),
     )
 
 

@@ -39,6 +39,7 @@ class Message(BaseModel):
     sources: dict | list | None = None
     created_at: int
     seq: int
+    has_trace: bool = False
 
 
 class MessageList(BaseModel):
