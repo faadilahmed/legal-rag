@@ -172,6 +172,17 @@ def _is_risk_query(query: str) -> bool:
     return any(kw in q for kw in _RISK_KEYWORDS)
 
 
+def _matched_risk_keyword(query: str) -> str | None:
+    """Return the first risk keyword found in the query, or None.
+    Used to surface the *reason* a query was classified as risk-flavored
+    in the per-turn trace."""
+    q = " " + query.lower() + " "
+    for kw in _RISK_KEYWORDS:
+        if kw in q:
+            return kw.strip()
+    return None
+
+
 def _apply_per_ticker_quota(
     reranked_all: list[dict],
     top_k: int,
@@ -283,12 +294,13 @@ async def stream_chat(
     # queries about specific companies get diluted by semantically similar
     # chunks from other companies.
     auto_tickers: set[str] = set()
+    detected_tickers: set[str] = set()
     if not ticker_set:
-        detected = detect_query_tickers(user_content)
+        detected_tickers = detect_query_tickers(user_content)
         # Only auto-scope if we'd still have chunks to retrieve from after
         # the filter (i.e., the detected tickers exist in the corpus).
         valid = {
-            t for t in detected
+            t for t in detected_tickers
             if any(c["ticker"] == t for c in pipeline.index.chunks)
         }
         if valid:
@@ -424,6 +436,41 @@ async def stream_chat(
     yield sse.data_part("status", {"phase": "done", "label": "Done"})
 
     # 6. Build the trace dict.
+    # Determine the source of any active ticker scope so the trace can
+    # tell the user "this came from the UI filter" vs "this was inferred
+    # from the query text". Manual takes precedence over auto.
+    if ticker_filter:
+        scope_source = "manual"
+    elif auto_tickers:
+        scope_source = "auto"
+    else:
+        scope_source = "none"
+
+    selection_strategy = (
+        "per_ticker_quota" if (ticker_set or year_set) else "rerank_top_k"
+    )
+
+    decisions = {
+        "auto_scope": {
+            "detected": sorted(detected_tickers),
+            "applied": sorted(ticker_set) if ticker_set else [],
+            "source": scope_source,
+        },
+        "risk_query": {
+            "is_risk": risk_query,
+            "matched_keyword": _matched_risk_keyword(user_content),
+        },
+        "retrieval": {
+            "k_requested": retrieve_k,
+            "n_candidates": len(candidates),
+            "item_bias_active": True,
+        },
+        "selection": {
+            "strategy": selection_strategy,
+            "top_k": top_k,
+        },
+    }
+
     trace = {
         "query": user_content,
         "query_embedding_preview": [float(x) for x in query_emb[:24].tolist()],
@@ -431,6 +478,7 @@ async def stream_chat(
             "ticker_filter": ticker_filter,
             "year_filter": year_filter,
         },
+        "decisions": decisions,
         "retrieval": {
             "n_chunks_in_index": n_chunks_total,
             "n_candidates_after_filter": n_candidates_after_filter,

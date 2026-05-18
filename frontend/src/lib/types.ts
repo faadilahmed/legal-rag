@@ -116,6 +116,27 @@ export interface TraceUsage {
   completion_tokens: number
 }
 
+export interface TraceDecisions {
+  auto_scope: {
+    detected: string[]
+    applied: string[]
+    source: "manual" | "auto" | "none"
+  }
+  risk_query: {
+    is_risk: boolean
+    matched_keyword: string | null
+  }
+  retrieval: {
+    k_requested: number
+    n_candidates: number
+    item_bias_active: boolean
+  }
+  selection: {
+    strategy: "rerank_top_k" | "per_ticker_quota"
+    top_k: number
+  }
+}
+
 export interface Trace {
   query: string
   query_embedding_preview: number[]
@@ -123,6 +144,8 @@ export interface Trace {
     ticker_filter: string[] | null
     year_filter: number[] | null
   }
+  // `decisions` was added later — older persisted traces won't have it.
+  decisions?: TraceDecisions
   retrieval: TraceRetrieval
   rerank: { top_k: number }
   prompt: TracePrompt

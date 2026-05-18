@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
 import type { Trace } from "@/lib/types"
 
+import { PipelineLog } from "./trace/PipelineLog"
 import { PromptViewer } from "./trace/PromptViewer"
 import { QueryEmbeddingViz } from "./trace/QueryEmbeddingViz"
 import { RetrievedChunksList } from "./trace/RetrievedChunksList"
@@ -92,6 +93,7 @@ export function TracePanel({
                 timings={trace.timings_ms}
                 usage={trace.usage}
               />
+              <PipelineLog trace={trace} />
               <QueryEmbeddingViz values={trace.query_embedding_preview} />
               <RetrievedChunksList
                 candidates={trace.retrieval.candidates}

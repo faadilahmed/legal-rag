@@ -27,6 +27,9 @@ export function RetrievedChunksList({ candidates, topK }: RetrievedChunksListPro
           top {topK} fed to Claude (highlighted)
         </span>
       </div>
+
+      <CandidatesLegend />
+
       <div className="space-y-2">
         {candidates.map((c) => {
           const inPrompt = c.rerank_rank !== null && c.rerank_rank < topK
@@ -68,5 +71,95 @@ export function RetrievedChunksList({ candidates, topK }: RetrievedChunksListPro
         })}
       </div>
     </div>
+  )
+}
+
+function CandidatesLegend() {
+  return (
+    <details className="group rounded-md border border-border bg-muted/20 p-2.5 text-[11px] text-muted-foreground">
+      <summary className="cursor-pointer select-none text-foreground hover:text-foreground/80">
+        How to read these candidates
+      </summary>
+      <div className="mt-2 space-y-2 leading-relaxed">
+        <p>
+          Each row is one chunk the system considered as a possible source.
+          They&apos;re rendered in cross-encoder rerank order (the order they
+          were finally scored), not the order they entered retrieval. The
+          ones with a primary border + "in prompt" badge are the top-{" "}
+          <span className="font-mono">k</span> that were actually sent to
+          Claude as the answer&apos;s grounding context.
+        </p>
+
+        <div className="space-y-1.5">
+          <p className="font-medium text-foreground">Score bars</p>
+          <ul className="ml-3 list-disc space-y-1">
+            <li>
+              <span className="font-mono text-sky-400">dense</span> — cosine
+              similarity between the query and chunk embeddings (range 0–1).
+              Captures semantic match. A high dense score means the chunk is
+              about a topic close to the query in vector space.
+            </li>
+            <li>
+              <span className="font-mono text-amber-400">sparse</span> — BM25
+              score (TF-IDF flavored, no fixed range). Captures exact-token
+              overlap with the query — useful for ticker symbols, named
+              entities, and regulatory jargon that dense embeddings blur.
+            </li>
+            <li>
+              <span className="font-mono text-foreground">rrf</span> —
+              reciprocal rank fusion of dense + sparse, plus an additive
+              per-Item bias for substantive sections (1A / 7 / 7A / etc).
+              This is the score that determines which candidates survive
+              past retrieval into the rerank pool.
+            </li>
+            <li>
+              <span className="font-mono text-emerald-400">rerank</span> —
+              cross-encoder score (typically −10 to +10, log-odds-ish).
+              Computed by scoring the (query, chunk) pair JOINTLY through a
+              transformer — categorically more accurate than independent
+              embeddings, but expensive enough that it only runs on the top
+              candidates from RRF.
+            </li>
+          </ul>
+          <p className="text-[10px]">
+            Bars are normalized within this candidate set so you can visually
+            compare row to row. The raw numeric value is shown on the right.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <p className="font-medium text-foreground">
+            Rank tags{" "}
+            <span className="font-mono text-[10px] text-muted-foreground">
+              (d:N · s:N · rrf:N · rr:N)
+            </span>
+          </p>
+          <p>
+            The numbers in the small monospaced row in each header are the
+            chunk&apos;s position in each ranker&apos;s output. Lower is
+            better; 0 means &ldquo;top hit&rdquo;.
+          </p>
+          <p>
+            A dash <span className="font-mono">—</span> means the chunk
+            wasn&apos;t in that ranker&apos;s top-K — common when dense and
+            sparse disagree on which chunks are relevant. Chunks with both
+            tags populated tend to be the most robust matches (both rankers
+            agree).
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <p className="font-medium text-foreground">Why so many candidates?</p>
+          <p>
+            Retrieval returns 50 candidates by default, oversampled to 150
+            for risk-flavored queries so the cross-encoder has more material
+            to discriminate from. From that pool, only the top {" "}
+            <span className="font-mono">k</span> (usually 8) actually make it
+            into Claude&apos;s prompt. The rest are kept in the trace so you
+            can see what was considered and rejected.
+          </p>
+        </div>
+      </div>
+    </details>
   )
 }
