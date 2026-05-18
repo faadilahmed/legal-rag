@@ -47,3 +47,48 @@ class MessageList(BaseModel):
 
 class DeleteResponse(BaseModel):
     deleted: bool
+
+
+class ItemSummary(BaseModel):
+    item: str
+    chunk_count: int
+
+
+class TickerSummary(BaseModel):
+    ticker: str
+    chunk_count: int
+    items: list[ItemSummary]
+
+
+class SectorSummary(BaseModel):
+    name: str
+    ticker_count: int
+    chunk_count: int
+    tickers: list[TickerSummary]
+
+
+class CorpusResponse(BaseModel):
+    sectors: list[SectorSummary]
+
+
+class ChunkPreview(BaseModel):
+    chunk_id: str
+    ticker: str
+    item: str
+    section_title: str
+    char_count: int
+    preview: str  # first 300 chars
+
+
+class ChunkPreviewList(BaseModel):
+    items: list[ChunkPreview]
+    total: int
+
+
+class ChunkFull(BaseModel):
+    chunk_id: str
+    ticker: str
+    item: str
+    section_title: str
+    text: str
+    char_count: int
