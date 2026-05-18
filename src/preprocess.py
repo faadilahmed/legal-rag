@@ -60,24 +60,88 @@ def html_to_text(html: str) -> str:
     return text.strip()
 
 
+# Matches a title that is a cross-reference fragment rather than a real section heading.
+# Cross-refs start with lowercase letters, connector words, or punctuation.
+# Real headings start with an uppercase letter or digit (e.g. "Risk Factors", "Business").
+_XREF_START = re.compile(
+    r'^[a-z,;()\[\]\'".\-–—]'   # starts with lowercase or punctuation
+    r'|^(?:of|in|under|from|to|and|or|the)\b',  # or connector word (case-insensitive)
+    re.IGNORECASE,
+)
+
+
+def _title_score(title: str) -> int:
+    """Return 1 if this looks like a real section heading, 0 if a cross-reference fragment.
+
+    Real headings: "Risk Factors", "Business", "Financial Statements..."
+    Cross-refs: "of this Form 10-K...", ", 'Financial Statements...'", "under the heading..."
+    """
+    stripped = title.strip()
+    if not stripped:
+        return 0
+    # Check lowercase-start separately (IGNORECASE would make [a-z] match uppercase too)
+    if stripped[0].islower() or stripped[0] in ',;()[]\'\".-–—':
+        return 0
+    # Check connector words (case-insensitive)
+    if re.match(r'^(?:of|in|under|from|to|and|or|the)\b', stripped, re.IGNORECASE):
+        return 0
+    return 1
+
+
 def extract_sections(text: str) -> list[dict]:
     """Detect 'Item X.' sections in 10-K text.
 
-    10-Ks list items twice: once in the Table of Contents and once with actual
-    content. We keep only the last 15 matches as a coarse de-duplication —
-    works reliably because real content always follows the TOC.
+    10-Ks reference each Item multiple times: in the Table of Contents, in
+    the section content, and in cross-references from other items
+    ("see Item 1A"). We deduplicate by keeping, for each unique item number,
+    the occurrence that looks most like a real section heading.
+
+    Selection priority (highest wins):
+      1. Title looks like a real heading (not a cross-reference fragment)
+      2. Longest text span
+
+    TOC entries span ~50-100 chars; content sections span thousands. Within
+    real headings, the longest span is reliably the content section. The
+    title-score check handles edge cases where a cross-reference incidentally
+    spans more text than the real section (e.g. AAPL Item 1A).
     """
     matches = list(ITEM_PATTERN.finditer(text))
-    sections: list[dict] = []
+    if not matches:
+        return []
+
+    spans = []
     for i, match in enumerate(matches):
         start = match.start()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        sections.append({
-            "item": match.group(1),
-            "title": match.group(2).strip()[:80],
+        title = match.group(2).strip()[:80]
+        spans.append({
+            "item": match.group(1).upper(),
+            "title": title,
+            "start": start,
+            "end": end,
             "text": text[start:end].strip(),
+            "length": end - start,
+            "score": _title_score(title),
         })
-    return sections[-15:] if len(sections) > 15 else sections
+
+    # For each unique item number, keep the best occurrence:
+    # prefer real headings (score=1) over cross-refs (score=0), then longest span.
+    by_item: dict[str, dict] = {}
+    for span in spans:
+        item = span["item"]
+        if item not in by_item:
+            by_item[item] = span
+        else:
+            current = by_item[item]
+            if (span["score"], span["length"]) > (current["score"], current["length"]):
+                by_item[item] = span
+
+    # Return in document order so consumers see Items 1, 1A, 1B, ... in order.
+    sections_sorted = sorted(by_item.values(), key=lambda s: s["start"])
+    return [
+        {"item": s["item"], "title": s["title"], "text": s["text"]}
+        for s in sections_sorted
+    ]
 
 
 def _resolve_ticker(filing_path: Path) -> str:
