@@ -25,8 +25,11 @@ anthropic>=0.30.0
 ragas>=0.1.7
 datasets>=2.16.0
 
-# UI
-gradio>=4.20.0
+# Web (FastAPI backend serving the React frontend)
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+aiosqlite>=0.20.0
+pydantic>=2.6
 
 # PySpark (optional but required for the demo)
 pyspark>=3.5.0
