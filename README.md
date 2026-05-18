@@ -22,4 +22,19 @@ python scripts/run_eval.py
 python app/gradio_app.py
 ```
 
+### PySpark module (`src/spark_embed.py`)
+
+The distributed embedding module requires two environment variables before
+running tests or the `__main__` block:
+
+```bash
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS — Temurin 17
+export PYSPARK_PYTHON=$(pwd)/.venv/bin/python       # ensures workers use venv
+
+pytest tests/test_spark_embed.py -v
+```
+
+See `docs/SPARK_SETUP.md` for the full explanation, including the macOS Apple
+Silicon MPS workaround (`device="cpu"` in executor workers).
+
 (README will be expanded later with architecture diagram, eval results, and the "what I'd do at scale" section.)
