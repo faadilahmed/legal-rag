@@ -60,6 +60,7 @@ These are minor things in the spec that I'll quietly fix as I go — recording t
 - **`__init__.py` for `src/`:** Spec lists `src/__init__.py` but doesn't show its contents. We leave it empty (package marker only).
 - **Python type-hint syntax:** Spec uses `list[dict]`/`dict | None`-style hints. Python 3.12 supports them natively, so we keep the spec's style as-is. (Was a concern when the env was undecided; resolved now that we're on 3.12.)
 - **`generate.py` regex `[\w_]+`:** Redundant — `\w` already includes underscore. Leave as-is (matches the spec verbatim); not worth a deviation.
+- **`preprocess.py` section dedup:** The spec's "keep last 15 sections" heuristic drops Items 1-7 on real 10-Ks because total match count (TOC + content + cross-references) exceeds 30. Replaced with: for each unique item number, keep the match with the longest text span (TOC entries span ~50 chars; content sections span thousands). An additional title-score filter deprioritises cross-reference fragments (those whose captured title starts with a lowercase letter, punctuation, or connector word like "of"/"in"/"under") over real section headings. Verified on AAPL and MSFT — Item 1A now correctly captured. Note: AAPL's Item 1A is only ~790 chars because this filing incorporates Risk Factors by reference to the Annual Report rather than reproducing them; this is correct for that filing structure.
 
 ---
 
