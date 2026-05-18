@@ -9,6 +9,7 @@ import aiosqlite
 
 from backend.routers.threads import db_append_message, db_set_thread_title
 from backend.services import sse
+from backend.services.company_aliases import detect_query_tickers
 from src.config import DENSE_TOP_K, RERANK_TOP_K, SPARSE_TOP_K
 from src.generate import CHAT_SYSTEM_PROMPT, CHAT_USER_TEMPLATE, CITATION_PATTERN
 
@@ -137,6 +138,83 @@ def _build_history_messages(prior: list) -> list[dict]:
     return [{"role": m.role, "content": m.content} for m in prior]
 
 
+# When a query is clearly about RISK, restrict retrieval to the SEC sections
+# where risk discussion actually lives. Otherwise Item 1 (Business) — which
+# is huge for banks and constantly mentions "trading" / "market" — drowns
+# out the Risk Factors (1A) and Market Risk Disclosures (7A) where the
+# answer is actually written.
+_RISK_KEYWORDS = (
+    "risk", "risks", "risky",
+    "trading", "market-making", "market making",
+    "exposure", "exposures", "concentration",
+    "credit", "liquidity", "capital",
+    "counterparty", "counterparties",
+    "regulatory", "regulation", "regulator",
+    "var ", "value at risk", "stress test",
+    "litigation", "lawsuit", "settlement",
+    "cyber", "cybersecurity", "breach",
+    "supply chain", "geopolitical",
+)
+# Note: 7A (Quantitative Market Risk Disclosures) is intentionally excluded.
+# For banks (JPM, GS, MS, etc.) the 7A item is almost always a one-paragraph
+# cross-reference stub pointing readers to Item 7's Market Risk Management
+# discussion (e.g., "Refer to Market Risk Management on pages 135–143"). The
+# substantive market-risk content lives in Item 7 itself.
+_RISK_SECTION_ITEMS = {"1A", "7"}
+
+
+def _is_risk_query(query: str) -> bool:
+    """Heuristic: does the query ask about risks / financial exposures /
+    regulatory pressure? If so, the answer is almost certainly in Item 1A
+    (Risk Factors), Item 7 (MD&A), or Item 7A (Market Risk Disclosures),
+    and chunks from elsewhere are noise."""
+    q = " " + query.lower() + " "
+    return any(kw in q for kw in _RISK_KEYWORDS)
+
+
+def _apply_per_ticker_quota(
+    reranked_all: list[dict],
+    top_k: int,
+    tickers: set[str] | None,
+) -> list[dict]:
+    """Pick top_k chunks ensuring each scoped ticker gets at least one slot.
+
+    Without this, when 2+ tickers are in scope, the one with more chunks (or
+    more keyword-matching chunks) tends to occupy all 5 reranked slots — and
+    Claude correctly refuses to answer for the missing ticker. With this,
+    each scoped ticker gets max(1, top_k // n_tickers) chunks, then any
+    remaining slots fill with the next-best overall. Result is preserved
+    in rerank-score order.
+
+    Pass-through (return reranked_all[:top_k]) when there's no scope or only
+    one ticker in scope.
+    """
+    if not tickers or len(tickers) <= 1:
+        return reranked_all[:top_k]
+
+    per_ticker = max(1, top_k // len(tickers))
+
+    # Group reranked candidates by ticker, preserving rerank-score order.
+    by_ticker: dict[str, list[dict]] = {}
+    for c in reranked_all:
+        t = c["ticker"]
+        if t in tickers:
+            by_ticker.setdefault(t, []).append(c)
+
+    # Quota: take the top per_ticker from each ticker.
+    quota: list[dict] = []
+    for t in sorted(tickers):
+        quota.extend(by_ticker.get(t, [])[:per_ticker])
+
+    # Sort the quota by rerank score so the highest-confidence chunks lead.
+    quota.sort(key=lambda c: -float(c.get("rerank_score", 0.0)))
+
+    # Fill the remaining slots from the best overall not already in the quota.
+    quota_ids = {c["chunk_id"] for c in quota}
+    remaining = [c for c in reranked_all if c["chunk_id"] not in quota_ids]
+    return (quota + remaining)[:top_k]
+
+
 def _title_from(query: str, max_chars: int = 60) -> str:
     """Trim the user's first message to a thread title at a word boundary."""
     q = query.strip().replace("\n", " ")
@@ -199,6 +277,31 @@ async def stream_chat(
     ticker_set = set(ticker_filter) if ticker_filter else None
     year_set = set(year_filter) if year_filter else None
 
+    # Auto-scope: if the user didn't set an explicit ticker filter but they
+    # named specific companies in the query ("How do JPMorgan and Goldman
+    # Sachs..."), scope retrieval to those companies. Without this, broad
+    # queries about specific companies get diluted by semantically similar
+    # chunks from other companies.
+    auto_tickers: set[str] = set()
+    if not ticker_set:
+        detected = detect_query_tickers(user_content)
+        # Only auto-scope if we'd still have chunks to retrieve from after
+        # the filter (i.e., the detected tickers exist in the corpus).
+        valid = {
+            t for t in detected
+            if any(c["ticker"] == t for c in pipeline.index.chunks)
+        }
+        if valid:
+            auto_tickers = valid
+            ticker_set = valid
+            yield sse.data_part(
+                "status",
+                {
+                    "phase": "retrieving",
+                    "label": f"Auto-scoped to {', '.join(sorted(valid))}",
+                },
+            )
+
     # Count candidates that pass the active filters (for trace metadata).
     if ticker_set or year_set:
         n_candidates_after_filter = sum(
@@ -210,17 +313,37 @@ async def stream_chat(
     else:
         n_candidates_after_filter = n_chunks_total
 
+    # Risk-query routing: if the query is clearly about risk / regulatory /
+    # exposure topics, force retrieval to substantive risk-section items
+    # (Item 1A / 7 / 7A). This sidesteps the failure mode where Item 1
+    # (Business) — long, full of "trading" mentions for banks — drowns out
+    # the actual Risk Factors section where the answer lives.
+    risk_query = _is_risk_query(user_content)
+
     t_retrieve_start = time.perf_counter()
+    # Oversample 3x for risk queries so the cross-encoder has more candidates
+    # to discriminate among. We deliberately do NOT post-filter by Item here:
+    # our EDGAR ingestion misclassifies some sections (notably for big banks,
+    # the long Risk Factors content can end up labeled Item 1 instead of 1A),
+    # so a hard Item filter throws out real risk content. The per-Item RRF
+    # bias and cross-encoder are sufficient to surface substantive sections.
+    target_top_k = top_k_rerank or RERANK_TOP_K
+    retrieve_k = DENSE_TOP_K * 3 if risk_query else DENSE_TOP_K
     candidates = pipeline.retriever.retrieve(
         user_content,
-        k=DENSE_TOP_K,
+        k=retrieve_k,
         ticker_filter=ticker_set,
         year_filter=year_set,
         return_breakdown=True,
     )
+    # Cap candidate pool size before reranking — the cross-encoder is the
+    # latency hotspot (~3ms per pair), so 150 pairs ≈ 0.5 s is the upper
+    # bound we're willing to spend on rerank.
+    if len(candidates) > 150:
+        candidates = candidates[:150]
     timings_ms["retrieve"] = int((time.perf_counter() - t_retrieve_start) * 1000)
 
-    top_k = top_k_rerank or RERANK_TOP_K
+    top_k = target_top_k
     yield sse.data_part(
         "status",
         {"phase": "reranking", "label": f"Reranking {len(candidates)} candidates"},
@@ -233,8 +356,28 @@ async def stream_chat(
     )
     timings_ms["rerank"] = int((time.perf_counter() - t_rerank_start) * 1000)
 
-    # The chunks actually fed to Claude are the top-k slice.
-    reranked = reranked_all[:top_k]
+    # Selection strategy depends on scope.
+    #
+    # When NO scope is active, trust the cross-encoder — it's good at
+    # selecting the best 5 chunks from a broad corpus where dense+sparse
+    # retrieval has already done coarse filtering.
+    #
+    # When scope IS active (manual or auto-detected), the candidate set is
+    # already narrow (one or a few companies). Empirically the cross-encoder
+    # tends to over-prefer chunks with literal keyword overlap (Business
+    # sections that mention "trading" lots of times) over chunks that
+    # actually answer the question (Risk Factors / MD&A / Market Risk
+    # disclosures). The Item-biased RRF ordering does better in this case.
+    # So when scoped, we use the RRF candidates' order (already biased toward
+    # substantive items) and apply a per-ticker quota for multi-ticker scopes.
+    if ticker_set or year_set:
+        # Use cross-encoder order to discard cross-reference stubs that the
+        # reranker correctly scores low ("See pages 135–143" chunks), then
+        # apply per-ticker quota so multi-company queries don't get all
+        # answers from one company.
+        reranked = _apply_per_ticker_quota(reranked_all, top_k, ticker_set)
+    else:
+        reranked = reranked_all[:top_k]
 
     yield sse.data_part(
         "status",

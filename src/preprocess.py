@@ -119,11 +119,13 @@ def extract_sections(text: str) -> list[dict]:
     if not matches:
         return []
 
-    # Cap candidate spans at 100k chars. A real 10-K Item rarely exceeds this;
-    # huge spans usually come from cross-references followed by long runs of
-    # text with no further Item matches, which would otherwise sweep up
-    # multiple legitimate sections.
-    MAX_SECTION_CHARS = 100_000
+    # Cap candidate spans at 500k chars. Bank 10-Ks (JPM, GS, BAC, etc.) have
+    # massive Risk Factors sections (often 150–250k chars). Earlier we used
+    # 100k here, which dropped the real Risk Factors content and left only
+    # the short TOC entry, so risk queries returned empty. 500k still rules
+    # out runaway spans from cross-references that would otherwise sweep up
+    # multiple legitimate Items.
+    MAX_SECTION_CHARS = 500_000
 
     spans = []
     for i, match in enumerate(matches):

@@ -3,12 +3,41 @@
 Reciprocal Rank Fusion is parameter-free and works across incomparable score
 scales: each item's contribution from each ranker is 1 / (K + rank + 1), summed
 across rankers. K=60 is the canonical default from the original RRF paper.
+
+In addition to RRF we apply a small per-Item bias to the fused score. The
+problem this solves: BM25 is very literal — a query like 'trading and
+market-making risks' surfaces 'Insider Trading Policy' chunks (Item 18)
+ahead of the actual market-risk content (Item 1A / 7 / 7A) because both
+mention 'trading'. Substantive sections of a 10-K (Business, Risk Factors,
+MD&A, Market Risk Disclosures, Financial Statements) almost always carry
+the answer when users ask analytical questions; procedural sections
+(Compensation, Director relationships, Insider Trading Policy, exhibits)
+almost never do. The bias is a small positive nudge on substantive Items,
+so the reranker gets a candidate pool dominated by the right kind of
+content while procedural chunks can still show up when nothing else matches.
 """
 from collections import defaultdict
 
 import numpy as np
 
 from src.config import DENSE_TOP_K, RRF_K, SPARSE_TOP_K
+
+
+# Per-Item additive bias on the fused RRF score. Numbers are tuned to be
+# meaningful (RRF scores are typically 0.01-0.05) but not so large that
+# they completely override genuine sparse/dense relevance.
+# Substantive sections get a positive nudge; everything else gets nothing.
+# We deliberately do NOT apply negative biases — if a query is genuinely
+# about compensation or insider trading, the substantive items won't
+# match and those sections can still surface naturally.
+ITEM_BIAS: dict[str, float] = {
+    "1": 0.003,   # Business
+    "1A": 0.010,  # Risk Factors — most-queried section in any 10-K
+    "1C": 0.003,  # Cybersecurity (newer SEC requirement)
+    "7": 0.010,   # MD&A — financial narrative, also heavily queried
+    "7A": 0.007,  # Quantitative Market Risk Disclosures
+    "8": 0.003,   # Financial Statements
+}
 
 
 def _rrf_fuse(ranked_lists: list[list[tuple[int, int]]]) -> dict[int, float]:
@@ -104,6 +133,17 @@ class HybridRetriever:
         }
 
         fused = _rrf_fuse([dense_ranked, sparse_ranked])
+
+        # Apply per-Item additive bias: nudge substantive sections (Risk
+        # Factors, MD&A, etc.) above procedural ones (Insider Trading
+        # Policy, exhibits) when fused scores are similar.
+        if ITEM_BIAS:
+            for chunk_id in list(fused.keys()):
+                item = self.index.chunks[chunk_id].get("item")
+                bias = ITEM_BIAS.get(item, 0.0)
+                if bias:
+                    fused[chunk_id] += bias
+
         top_ids = sorted(fused.keys(), key=lambda x: -fused[x])[:k]
 
         results = []
