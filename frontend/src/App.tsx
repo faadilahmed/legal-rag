@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/layout/AppShell"
 import { Thread } from "@/components/chat/Thread"
+import { PasswordGate } from "@/components/auth/PasswordGate"
 import { RuntimeMount, useThreadHistory } from "@/runtime/LegalRagRuntime"
 import { useThreads } from "@/hooks/useThreads"
 import { ScopeProvider } from "@/runtime/ScopeContext"
@@ -38,9 +39,11 @@ function ChatHost() {
 
 export default function App() {
   return (
-    <ScopeProvider>
-      <ChatHost />
-      <Toaster />
-    </ScopeProvider>
+    <PasswordGate>
+      <ScopeProvider>
+        <ChatHost />
+        <Toaster />
+      </ScopeProvider>
+    </PasswordGate>
   )
 }
