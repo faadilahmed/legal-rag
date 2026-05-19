@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { ChevronRight, Moon, Sun } from "lucide-react"
+import { ChevronRight, Menu, Moon, Sun } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,9 +16,12 @@ interface HealthInfo {
 
 interface HeaderProps {
   threadsState: ThreadsState
+  // Mobile-only — invoked when the user taps the hamburger to open the
+  // slide-in sidebar. AppShell wires this to its sidebar state.
+  onOpenSidebar?: () => void
 }
 
-export function Header({ threadsState }: HeaderProps) {
+export function Header({ threadsState, onOpenSidebar }: HeaderProps) {
   const { theme, toggle } = useTheme()
   const [health, setHealth] = useState<HealthInfo | null>(null)
 
@@ -44,6 +47,17 @@ export function Header({ threadsState }: HeaderProps) {
   return (
     <header className="flex items-center justify-between gap-3 border-b border-border bg-background px-4 py-2">
       <div className="flex min-w-0 items-center gap-2">
+        {onOpenSidebar && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="-ml-2 h-8 w-8 shrink-0 md:hidden"
+            onClick={onOpenSidebar}
+            aria-label="Open conversation list"
+          >
+            <Menu className="h-4 w-4" />
+          </Button>
+        )}
         <h1 className="shrink-0 text-sm font-semibold tracking-tight text-muted-foreground">
           SEC 10-K Q&A
         </h1>
