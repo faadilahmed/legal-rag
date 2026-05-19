@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+import { DeployTab } from "./tabs/DeployTab"
 import { EvalTab } from "./tabs/EvalTab"
 import { OverviewTab } from "./tabs/OverviewTab"
 import { PipelineTab } from "./tabs/PipelineTab"
@@ -30,10 +31,11 @@ export function InfoDialog({ open, onOpenChange }: InfoDialogProps) {
             </DialogDescription>
           </DialogHeader>
           <Tabs defaultValue="overview" className="flex flex-1 flex-col overflow-hidden">
-            <TabsList className="mx-6 mt-3 grid w-fit grid-cols-4">
+            <TabsList className="mx-6 mt-3 grid w-fit grid-cols-5">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
               <TabsTrigger value="stack">Stack</TabsTrigger>
+              <TabsTrigger value="deploy">Deploy</TabsTrigger>
               <TabsTrigger value="eval">Eval</TabsTrigger>
             </TabsList>
             <TabsContent
@@ -53,6 +55,12 @@ export function InfoDialog({ open, onOpenChange }: InfoDialogProps) {
               className="mt-0 flex-1 min-h-0 min-w-0 overflow-y-auto px-6 pb-6 pt-4"
             >
               <StackTab />
+            </TabsContent>
+            <TabsContent
+              value="deploy"
+              className="mt-0 flex-1 min-h-0 min-w-0 overflow-y-auto px-6 pb-6 pt-4"
+            >
+              <DeployTab />
             </TabsContent>
             <TabsContent
               value="eval"
