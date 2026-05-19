@@ -2,6 +2,14 @@
 
 A semantic search and Q&A web app over ~80 SEC 10-K filings, demonstrating production-grade RAG architecture: hybrid retrieval (FAISS + BM25 with RRF), cross-encoder reranking, multi-turn chat with citation-grounded generation via Claude, RAGAS-based evaluation, and a PySpark embedding scale-up module. UI is a React + assistant-ui frontend talking to a FastAPI backend.
 
+## 🔗 Live demo
+
+**[red-field-0d871480f.7.azurestaticapps.net](https://red-field-0d871480f.7.azurestaticapps.net)**
+
+Frontend hosted on **Azure Static Web Apps** (free tier, CDN-fronted) → backend on **Azure Container Apps** (consumption tier) → **Azure Blob Storage** for the 1.1 GB index → **Azure Key Vault** for the Anthropic API key (via managed identity) → **Claude Opus 4.7** for generation.
+
+The demo is passcode-gated to keep casual visitors from running up the Anthropic bill. Ask the project owner for the passcode if you're reviewing this as a portfolio piece.
+
 ## Why this project
 
 Built after seeing the iManage MCP Server launch, this project explores the architectural pattern of governed semantic search over a corpus of business/legal documents with traceable citations.
