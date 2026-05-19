@@ -89,11 +89,13 @@ def ensure_index_present(
         dst = target_dir / name
         print(f"[blob_loader] fetching {name} ...", flush=True)
         blob_client = container_client.get_blob_client(name)
+        # Stream chunks instead of readall() — readall() loads the entire
+        # blob into RAM and OOM-kills the container on tight memory limits.
+        # Chunked download peaks at ~4 MB of RAM per blob regardless of size.
+        downloader = blob_client.download_blob(max_concurrency=2)
         with open(dst, "wb") as f:
-            # download_blob().readall() loads the whole file into memory.
-            # Fine for our largest blob (~410 MB) given Container Apps has 2 GB RAM.
-            stream = blob_client.download_blob()
-            f.write(stream.readall())
+            for chunk in downloader.chunks():
+                f.write(chunk)
         print(f"[blob_loader] wrote {dst} ({dst.stat().st_size:,} bytes)", flush=True)
 
     print(f"[blob_loader] index ready at {target_dir}", flush=True)
