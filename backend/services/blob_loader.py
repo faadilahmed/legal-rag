@@ -67,37 +67,33 @@ def ensure_index_present(
     target_dir.mkdir(parents=True, exist_ok=True)
     missing = [name for name in REQUIRED_FILES if not (target_dir / name).exists()]
     if not missing:
-        LOGGER.info("[blob_loader] all %d index files already cached at %s",
-                    len(REQUIRED_FILES), target_dir)
+        print(f"[blob_loader] all {len(REQUIRED_FILES)} index files already cached at {target_dir}", flush=True)
         return
 
     if not should_load_from_blob():
         # Local dev path: nothing to do, the build step writes these files.
-        LOGGER.info(
-            "[blob_loader] missing %s but AZURE_STORAGE_CONNECTION_STRING "
-            "not set; assuming local build artifacts will be used.",
-            missing,
+        print(
+            f"[blob_loader] missing {missing} but blob env not set; "
+            "assuming local build artifacts will be used.",
+            flush=True,
         )
         return
 
     container = container or os.environ.get("LEGAL_RAG_BLOB_CONTAINER", "rag-index")
 
-    LOGGER.info("[blob_loader] downloading %d files from container '%s'...",
-                len(missing), container)
+    print(f"[blob_loader] downloading {len(missing)} files from container '{container}'...", flush=True)
     svc = _build_blob_service_client()
     container_client = svc.get_container_client(container)
 
     for name in missing:
         dst = target_dir / name
-        LOGGER.info("[blob_loader] fetching %s ...", name)
+        print(f"[blob_loader] fetching {name} ...", flush=True)
         blob_client = container_client.get_blob_client(name)
         with open(dst, "wb") as f:
             # download_blob().readall() loads the whole file into memory.
-            # That's fine for our largest blob (~410 MB faiss.index) given
-            # Container Apps has 2 GB RAM, but streaming chunks would be
-            # safer at multi-GB scale.
+            # Fine for our largest blob (~410 MB) given Container Apps has 2 GB RAM.
             stream = blob_client.download_blob()
             f.write(stream.readall())
-        LOGGER.info("[blob_loader] wrote %s (%d bytes)", dst, dst.stat().st_size)
+        print(f"[blob_loader] wrote {dst} ({dst.stat().st_size:,} bytes)", flush=True)
 
-    LOGGER.info("[blob_loader] index ready at %s", target_dir)
+    print(f"[blob_loader] index ready at {target_dir}", flush=True)
