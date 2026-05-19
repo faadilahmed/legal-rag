@@ -39,24 +39,26 @@ export function AppShell({ children, threadsState }: AppShellProps) {
         onOpenSidebar={() => setMobileSidebarOpen(true)}
       />
 
-      {/* Desktop layout: resizable split. Hidden on mobile (< md). */}
-      <ResizablePanelGroup
-        direction="horizontal"
-        className="hidden flex-1 md:flex"
-      >
-        <ResizablePanel
-          defaultSize={22}
-          minSize={15}
-          maxSize={40}
-          className="border-r border-border"
-        >
-          <LeftSidebar threadsState={threadsState} />
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={78}>
-          <div className="h-full overflow-y-auto">{children}</div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+      {/* Desktop layout: resizable split.
+          ResizablePanelGroup hardcodes `flex` in its own classes, which
+          fights any Tailwind `hidden` we'd put on it directly. Wrap it in
+          a div instead so the responsive display toggle is unambiguous. */}
+      <div className="hidden flex-1 md:flex">
+        <ResizablePanelGroup direction="horizontal" className="flex-1">
+          <ResizablePanel
+            defaultSize={22}
+            minSize={15}
+            maxSize={40}
+            className="border-r border-border"
+          >
+            <LeftSidebar threadsState={threadsState} />
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={78}>
+            <div className="h-full overflow-y-auto">{children}</div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
 
       {/* Mobile layout: chat takes full width; sidebar lives in a slide-in
           Sheet triggered from the header's hamburger button. */}
