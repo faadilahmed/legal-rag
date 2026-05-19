@@ -4,7 +4,7 @@ A semantic search and Q&A web app over ~80 SEC 10-K filings, demonstrating produ
 
 ## 🔗 Live demo
 
-**[red-field-0d871480f.7.azurestaticapps.net](https://red-field-0d871480f.7.azurestaticapps.net)**
+**[legal-rag-imanage-demo.faadil-ahmed-dev.com](https://legal-rag-imanage-demo.faadil-ahmed-dev.com)**
 
 Frontend hosted on **Azure Static Web Apps** (free tier, CDN-fronted) → backend on **Azure Container Apps** (consumption tier) → **Azure Blob Storage** for the 1.1 GB index → **Azure Key Vault** for the Anthropic API key (via managed identity) → **Claude Opus 4.7** for generation.
 
