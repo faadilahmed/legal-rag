@@ -76,7 +76,8 @@ function buildAdapter(
         scopeTickers.size > 0 ? Array.from(scopeTickers) : null
       const yearFilter = scopeYears.size > 0 ? Array.from(scopeYears) : null
 
-      const res = await fetch("/api/chat/stream", {
+      const apiBase = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "")
+      const res = await fetch(`${apiBase}/api/chat/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

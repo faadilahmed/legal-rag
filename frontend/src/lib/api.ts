@@ -1,5 +1,12 @@
 import type { ChunkFull, ChunkPreview, CorpusTree, Thread, Trace } from "./types"
 
+// Resolve fetch URLs against this base. Empty string keeps the existing
+// relative-path behavior (works with Vite's dev proxy and with same-origin
+// hosting). In production on Azure Static Web Apps + Container Apps the
+// build sets this to the ACA backend URL so calls hit the right origin.
+const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "")
+const u = (path: string): string => `${API_BASE}${path}`
+
 export interface SourceChunkRow {
   chunk_id: string
   ticker: string
@@ -34,7 +41,7 @@ async function jsonOrThrow<T>(r: Response): Promise<T> {
 
 export const api = {
   async createThread(title?: string): Promise<Thread> {
-    const r = await fetch("/api/threads", {
+    const r = await fetch(u("/api/threads"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
@@ -43,26 +50,26 @@ export const api = {
   },
 
   async getChunk(chunkId: string): Promise<ChunkFull> {
-    const r = await fetch(`/api/chunks/${encodeURIComponent(chunkId)}`)
+    const r = await fetch(u(`/api/chunks/${encodeURIComponent(chunkId)}`))
     return jsonOrThrow<ChunkFull>(r)
   },
 
   async getMessages(threadId: string): Promise<MessageRow[]> {
     const r = await fetch(
-      `/api/threads/${encodeURIComponent(threadId)}/messages`,
+      u(`/api/threads/${encodeURIComponent(threadId)}/messages`),
     )
     const body = await jsonOrThrow<{ messages: MessageRow[] }>(r)
     return body.messages
   },
 
   async listThreads(): Promise<Thread[]> {
-    const r = await fetch("/api/threads")
+    const r = await fetch(u("/api/threads"))
     const body = await jsonOrThrow<{ threads: Thread[] }>(r)
     return body.threads
   },
 
   async renameThread(id: string, title: string): Promise<Thread> {
-    const r = await fetch(`/api/threads/${encodeURIComponent(id)}`, {
+    const r = await fetch(u(`/api/threads/${encodeURIComponent(id)}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
@@ -71,14 +78,14 @@ export const api = {
   },
 
   async deleteThread(id: string): Promise<void> {
-    const r = await fetch(`/api/threads/${encodeURIComponent(id)}`, {
+    const r = await fetch(u(`/api/threads/${encodeURIComponent(id)}`), {
       method: "DELETE",
     })
     await jsonOrThrow<{ deleted: boolean }>(r)
   },
 
   async archiveThread(id: string, archived: boolean): Promise<Thread> {
-    const r = await fetch(`/api/threads/${encodeURIComponent(id)}`, {
+    const r = await fetch(u(`/api/threads/${encodeURIComponent(id)}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ archived }),
@@ -87,7 +94,7 @@ export const api = {
   },
 
   async getCorpus(): Promise<CorpusTree> {
-    const r = await fetch("/api/corpus")
+    const r = await fetch(u("/api/corpus"))
     return jsonOrThrow<CorpusTree>(r)
   },
 
@@ -105,13 +112,13 @@ export const api = {
       offset: String(offset),
     })
     if (year) params.set("year", String(year))
-    const r = await fetch(`/api/chunks?${params}`)
+    const r = await fetch(u(`/api/chunks?${params}`))
     return jsonOrThrow<{ items: ChunkPreview[]; total: number }>(r)
   },
 
   async getMessageTrace(threadId: string, messageId: string): Promise<Trace> {
     const r = await fetch(
-      `/api/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/trace`,
+      u(`/api/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/trace`),
     )
     return jsonOrThrow<Trace>(r)
   },

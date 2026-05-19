@@ -24,7 +24,8 @@ export function Header({ threadsState }: HeaderProps) {
 
   useEffect(() => {
     let cancelled = false
-    fetch("/api/health")
+    const apiBase = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "")
+    fetch(`${apiBase}/api/health`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!cancelled && data) setHealth(data)
