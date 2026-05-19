@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/staticwebapp.config.json",
+  "routes": [
+    {
+      "route": "/api/*",
+      "rewrite": "https://legal-rag-api.wittyriver-a1e94f45.eastus.azurecontainerapps.io/api/*"
+    }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/assets/*", "/*.{css,js,svg,png,jpg,ico,webp}"]
+  },
+  "globalHeaders": {
+    "Cache-Control": "no-cache"
+  }
+}
