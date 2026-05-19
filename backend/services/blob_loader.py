@@ -21,8 +21,36 @@ REQUIRED_FILES = ("faiss.index", "bm25.pkl", "chunks.pkl", "embeddings.npy")
 
 
 def should_load_from_blob() -> bool:
-    """True only when the env explicitly opts in (i.e. running in Azure)."""
-    return bool(os.environ.get("AZURE_STORAGE_CONNECTION_STRING"))
+    """True when the env explicitly opts in (i.e. running in Azure).
+
+    Two forms accepted:
+      - AZURE_STORAGE_CONNECTION_STRING (single semicolon-delimited string)
+      - AZURE_STORAGE_ACCOUNT_NAME + AZURE_STORAGE_ACCOUNT_KEY (preferred for
+        Azure Container Apps; `;` in the connection string gets eaten by the
+        `--set-env-vars` / `--secrets` CLI parser).
+    """
+    if os.environ.get("AZURE_STORAGE_CONNECTION_STRING"):
+        return True
+    if os.environ.get("AZURE_STORAGE_ACCOUNT_NAME") and os.environ.get(
+        "AZURE_STORAGE_ACCOUNT_KEY"
+    ):
+        return True
+    return False
+
+
+def _build_blob_service_client():
+    """Construct a BlobServiceClient from whichever env form is present."""
+    from azure.storage.blob import BlobServiceClient
+
+    conn = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+    if conn:
+        return BlobServiceClient.from_connection_string(conn)
+    name = os.environ["AZURE_STORAGE_ACCOUNT_NAME"]
+    key = os.environ["AZURE_STORAGE_ACCOUNT_KEY"]
+    return BlobServiceClient(
+        account_url=f"https://{name}.blob.core.windows.net",
+        credential=key,
+    )
 
 
 def ensure_index_present(
@@ -53,14 +81,10 @@ def ensure_index_present(
         return
 
     container = container or os.environ.get("LEGAL_RAG_BLOB_CONTAINER", "rag-index")
-    conn = os.environ["AZURE_STORAGE_CONNECTION_STRING"]
-
-    # Lazy import so local dev doesn't need the azure SDK on its critical path.
-    from azure.storage.blob import BlobServiceClient
 
     LOGGER.info("[blob_loader] downloading %d files from container '%s'...",
                 len(missing), container)
-    svc = BlobServiceClient.from_connection_string(conn)
+    svc = _build_blob_service_client()
     container_client = svc.get_container_client(container)
 
     for name in missing:
